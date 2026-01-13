@@ -24,7 +24,7 @@ export function validate(schema) {
     
     // Custom validation: at least email or phone must be provided
     // Check if schema has email and phone properties (auth schemas)
-    if (schema.properties?.email && schema.properties?.phone && !schema.required?.includes('otp')) {
+    if (schema.properties?.email && schema.properties?.phone) {
       if (!cleanBody.email && !cleanBody.phone) {
         return res.status(400).json({
           error: 'Validation failed',
@@ -33,24 +33,29 @@ export function validate(schema) {
       }
     }
     
-    // For verifyOTP, also check email/phone
-    if (schema.properties?.email && schema.properties?.phone && schema.required?.includes('otp')) {
-      if (!cleanBody.email && !cleanBody.phone) {
+    // Custom validation: name is required for register mode
+    if (cleanBody.mode === 'register') {
+      if (!cleanBody.name || cleanBody.name.trim().length === 0) {
         return res.status(400).json({
           error: 'Validation failed',
-          message: 'Either email or phone must be provided',
+          message: 'Name is required for registration',
         });
       }
+      // Trim name
+      cleanBody.name = cleanBody.name.trim();
     }
     
     const valid = validateFn(cleanBody);
 
     if (!valid) {
       const firstError = validateFn.errors?.[0];
+      console.log('❌ Validation errors:', validateFn.errors);
+      console.log('📦 Request body:', cleanBody);
       return res.status(400).json({
         error: 'Validation failed',
         message: firstError?.message || 'Invalid request data',
         details: validateFn.errors,
+        received: cleanBody, // For debugging
       });
     }
 

@@ -20,6 +20,7 @@ export const requestOTPSchema = {
       maxLength: 100,
     },
   },
+  required: ['mode'],
   additionalProperties: false,
 };
 
@@ -32,7 +33,7 @@ export const verifyOTPSchema = {
     mode: { type: 'string', enum: ['login', 'register'], default: 'login' },
     name: { type: 'string', minLength: 1, maxLength: 100 },
   },
-  required: ['otp'],
+  required: ['otp', 'mode'],
   additionalProperties: false,
 };
 

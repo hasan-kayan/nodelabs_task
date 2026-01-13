@@ -28,8 +28,11 @@ export default function LoginPage() {
       
       if (email) requestBody.email = email;
       if (phone) requestBody.phone = phone;
-      if (mode === 'register' && name) requestBody.name = name;
+      if (mode === 'register' && name && name.trim().length > 0) {
+        requestBody.name = name.trim();
+      }
       
+      console.log('📤 Request OTP:', requestBody);
       const response = await authAPI.requestOTP(requestBody);
       
       // In development mode, show OTP in console and alert
@@ -60,8 +63,11 @@ export default function LoginPage() {
       
       if (email) requestBody.email = email;
       if (phone) requestBody.phone = phone;
-      if (mode === 'register' && name) requestBody.name = name;
+      if (mode === 'register' && name && name.trim().length > 0) {
+        requestBody.name = name.trim();
+      }
       
+      console.log('📤 Verify OTP request:', requestBody);
       const response = await authAPI.verifyOTP(requestBody);
       
       console.log('✅ Auth response:', response.data);
@@ -170,7 +176,11 @@ export default function LoginPage() {
               placeholder="Enter your phone number"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading || (!email && !phone) || (mode === 'register' && !name)}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={loading || (!email && !phone) || (mode === 'register' && (!name || name.trim().length === 0))}
+          >
             {loading ? 'Sending...' : mode === 'login' ? 'Send OTP' : 'Register & Send OTP'}
           </Button>
         </form>

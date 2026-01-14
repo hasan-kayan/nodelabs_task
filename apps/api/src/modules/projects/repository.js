@@ -39,7 +39,15 @@ export const Project = mongoose.model('Project', projectSchema);
 
 export const projectRepository = {
   async create(data) {
-    return Project.create(data);
+    try {
+      console.log('📦 ProjectRepository.create - Data:', data);
+      const project = await Project.create(data);
+      console.log('✅ ProjectRepository.create - Success:', project._id);
+      return project;
+    } catch (error) {
+      console.error('❌ ProjectRepository.create - Error:', error);
+      throw error;
+    }
   },
 
   async findById(id) {

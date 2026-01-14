@@ -2,11 +2,23 @@ import logger from '../utils/logger.js';
 
 export function errorHandler(err, req, res, next) {
   logger.error('Error:', err);
+  logger.error('Error stack:', err.stack);
 
+  // Mongoose validation error
   if (err.name === 'ValidationError') {
+    const messages = Object.values(err.errors || {}).map(e => e.message);
     return res.status(400).json({
       error: 'Validation error',
-      details: err.message,
+      message: messages.join(', ') || err.message,
+      details: err.errors,
+    });
+  }
+
+  // Mongoose cast error (invalid ObjectId, etc.)
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      error: 'Invalid data format',
+      message: `${err.path} is invalid`,
     });
   }
 
@@ -21,6 +33,9 @@ export function errorHandler(err, req, res, next) {
 
   res.status(status).json({
     error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    ...(process.env.NODE_ENV === 'development' && { 
+      stack: err.stack,
+      name: err.name,
+    }),
   });
 }

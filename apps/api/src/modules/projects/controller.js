@@ -3,12 +3,41 @@ import { projectService } from './service.js';
 export const projectController = {
   async create(req, res, next) {
     try {
-      const project = await projectService.create({
-        ...req.body,
-        createdBy: req.user.userId, // JWT contains 'userId' field
-      });
+      console.log('📝 Create project - User:', req.user);
+      console.log('📝 Create project - Body:', req.body);
+      
+      // Convert userId to ObjectId
+      const mongoose = (await import('mongoose')).default;
+      const createdBy = mongoose.Types.ObjectId.isValid(req.user.userId)
+        ? new mongoose.Types.ObjectId(req.user.userId)
+        : req.user.userId;
+      
+      // Prepare project data
+      const projectData = {
+        name: req.body.name?.trim(),
+        description: req.body.description?.trim() || '',
+        status: req.body.status || 'active',
+        createdBy,
+      };
+      
+      // Add members if provided
+      if (req.body.members && Array.isArray(req.body.members)) {
+        projectData.members = req.body.members
+          .filter(id => mongoose.Types.ObjectId.isValid(id))
+          .map(id => new mongoose.Types.ObjectId(id));
+      }
+      
+      const project = await projectService.create(projectData);
+      
+      console.log('✅ Project created:', project._id);
       res.status(201).json(project);
     } catch (error) {
+      console.error('❌ Create project error:', error);
+      console.error('❌ Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
       next(error);
     }
   },

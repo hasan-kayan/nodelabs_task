@@ -3,6 +3,7 @@ import { ProtectedRoute } from './protected.jsx';
 import { useAuthStore } from '../../hooks/use-auth.js';
 import LoginPage from '../../features/auth/pages/Login.jsx';
 import ProjectsListPage from '../../features/projects/pages/ProjectsList.jsx';
+import CreateProjectPage from '../../features/projects/pages/CreateProject.jsx';
 import ProjectDetailPage from '../../features/projects/pages/ProjectDetail.jsx';
 import TaskDetailPage from '../../features/tasks/pages/TaskDetail.jsx';
 import ProfilePage from '../../features/profile/pages/Profile.jsx';
@@ -19,6 +20,7 @@ function App() {
         
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route path="/projects" element={<ProjectsListPage />} />
+          <Route path="/projects/new" element={<CreateProjectPage />} />
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/tasks/:id" element={<TaskDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />

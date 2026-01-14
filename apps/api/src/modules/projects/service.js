@@ -2,7 +2,35 @@ import { projectRepository } from './repository.js';
 
 export const projectService = {
   async create(data) {
-    return projectRepository.create(data);
+    console.log('📝 ProjectService.create - Data:', data);
+    
+    // Validate required fields
+    if (!data.name || !data.name.trim()) {
+      throw new Error('Project name is required');
+    }
+    
+    // Ensure createdBy is ObjectId
+    const mongoose = (await import('mongoose')).default;
+    if (data.createdBy) {
+      if (!mongoose.Types.ObjectId.isValid(data.createdBy)) {
+        throw new Error(`Invalid createdBy field: ${data.createdBy}`);
+      }
+      // Ensure it's an ObjectId instance
+      if (!(data.createdBy instanceof mongoose.Types.ObjectId)) {
+        data.createdBy = new mongoose.Types.ObjectId(data.createdBy);
+      }
+    } else {
+      throw new Error('createdBy is required');
+    }
+    
+    try {
+      const project = await projectRepository.create(data);
+      console.log('✅ ProjectService.create - Success:', project._id);
+      return project;
+    } catch (error) {
+      console.error('❌ ProjectService.create - Error:', error);
+      throw error;
+    }
   },
 
   async getAll(options) {

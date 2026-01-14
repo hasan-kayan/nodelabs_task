@@ -7,6 +7,7 @@ let channel = null;
 
 export async function connectRabbitMQ() {
   try {
+    logger.info(`🔌 Connecting to RabbitMQ: ${config.rabbitmq.url.replace(/:[^:@]+@/, ':****@')}`);
     connection = await amqp.connect(config.rabbitmq.url);
     channel = await connection.createChannel();
     
@@ -14,6 +15,7 @@ export async function connectRabbitMQ() {
     await channel.assertExchange(config.rabbitmq.exchange, 'topic', {
       durable: true,
     });
+    logger.info(`✅ Exchange asserted: ${config.rabbitmq.exchange}`);
 
     logger.info('✅ RabbitMQ connected');
     return { connection, channel };

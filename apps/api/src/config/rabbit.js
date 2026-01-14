@@ -34,11 +34,21 @@ export async function publishEvent(topic, message) {
   const ch = getChannel();
   const exchange = config.rabbitmq.exchange;
   
-  ch.publish(exchange, topic, Buffer.from(JSON.stringify(message)), {
-    persistent: true,
-  });
+  const published = ch.publish(
+    exchange, 
+    topic, 
+    Buffer.from(JSON.stringify(message)), 
+    {
+      persistent: true,
+    }
+  );
   
-  logger.info(`📤 Published event: ${topic}`);
+  if (published) {
+    logger.info(`📤 Published event: ${topic} to exchange: ${exchange}`);
+    logger.info(`📤 Event payload:`, { topic, ...message, otp: message.otp ? '***' : undefined });
+  } else {
+    logger.warn(`⚠️ Failed to publish event: ${topic} - channel buffer full`);
+  }
 }
 
 export async function closeRabbitMQ() {

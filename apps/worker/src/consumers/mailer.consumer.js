@@ -6,13 +6,22 @@ export async function setupMailerConsumer() {
   const channel = getChannel();
   const queue = 'mailer_queue';
   
+  logger.info('🔧 Setting up mailer consumer...');
   await channel.assertQueue(queue, { durable: true });
+  logger.info(`✅ Queue asserted: ${queue}`);
+  
   await channel.bindQueue(queue, config.rabbitmq.exchange, 'otp.requested');
+  logger.info(`✅ Queue bound to exchange: ${config.rabbitmq.exchange} with routing key: otp.requested`);
 
+  logger.info('👂 Waiting for OTP events...');
   await channel.consume(queue, async (msg) => {
-    if (!msg) return;
+    if (!msg) {
+      logger.warn('⚠️ Received null message');
+      return;
+    }
 
     try {
+      logger.info('📨 Received message from queue');
       const content = JSON.parse(msg.content.toString());
       logger.info('📧 Processing mailer event:', {
         email: content.email,

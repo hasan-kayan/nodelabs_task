@@ -10,15 +10,24 @@ export default function ProjectDetailPage() {
   const { id } = useParams();
   const queryClient = useQueryClient();
   
-  const { data: project, isLoading: projectLoading } = useQuery({
+  const { data: project, isLoading: projectLoading, error: projectError } = useQuery({
     queryKey: ['project', id],
     queryFn: () => projectsAPI.getById(id),
   });
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery({
+  const { data: tasks, isLoading: tasksLoading, error: tasksError } = useQuery({
     queryKey: ['tasks', { projectId: id }],
     queryFn: () => tasksAPI.getAll({ projectId: id }),
   });
+
+  // Handle 401 errors - show loading while redirect happens
+  if (projectError?.response?.status === 401 || tasksError?.response?.status === 401) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div>Session expired. Redirecting to login...</div>
+      </div>
+    );
+  }
 
   // Listen for real-time updates
   useSocketEvent('task.updated', () => {

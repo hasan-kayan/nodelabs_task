@@ -22,12 +22,32 @@ export default function ProjectsListPage() {
         return response;
       } catch (err) {
         console.error('❌ Projects API error:', err);
+        // If 401, don't retry - let interceptor handle it
+        if (err.response?.status === 401) {
+          throw err;
+        }
         throw err;
       }
     },
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Don't retry on 401 errors
+      if (error?.response?.status === 401) {
+        return false;
+      }
+      return failureCount < 1;
+    },
   });
 
+  // Handle 401 errors - show loading while redirect happens
+  if (error?.response?.status === 401) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div>Session expired. Redirecting to login...</div>
+      </div>
+    );
+  }
+  
+  // Show error UI for other errors
   if (error) {
     console.error('Projects API error:', error);
     return (

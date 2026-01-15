@@ -8,7 +8,7 @@ export default function CommentList({ taskId }) {
   const [newComment, setNewComment] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: comments } = useQuery({
+  const { data: comments, error: commentsError } = useQuery({
     queryKey: ['comments', taskId],
     queryFn: () => commentsAPI.getByTask(taskId).then((res) => res.data || []),
   });
@@ -19,7 +19,18 @@ export default function CommentList({ taskId }) {
       queryClient.invalidateQueries(['comments', taskId]);
       setNewComment('');
     },
+    onError: (error) => {
+      // Don't show error for 401 - interceptor will handle redirect
+      if (error?.response?.status !== 401) {
+        console.error('Failed to add comment:', error);
+      }
+    },
   });
+
+  // Handle 401 errors silently - interceptor will redirect
+  if (commentsError?.response?.status === 401) {
+    return null; // Don't render anything, redirect will happen
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();

@@ -7,10 +7,15 @@ import { createColumnHelper } from '@tanstack/react-table';
 const columnHelper = createColumnHelper();
 
 export default function SessionsTable() {
-  const { data: sessions } = useQuery({
+  const { data: sessions, error } = useQuery({
     queryKey: ['sessions'],
     queryFn: () => userAPI.getSessions(),
   });
+
+  // Handle 401 errors silently - interceptor will redirect
+  if (error?.response?.status === 401) {
+    return null; // Don't render anything, redirect will happen
+  }
 
   const columns = useMemo(
     () => [

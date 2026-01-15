@@ -25,30 +25,53 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    const originalRequest = error.config;
+    
+    // Handle 401 Unauthorized (token expired or invalid)
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
       const { refreshToken, logout } = useAuthStore.getState();
       
-      if (refreshToken) {
-        try {
-          const response = await axios.post(`${config.apiUrl}/api/auth/refresh`, {
-            refreshToken,
-          });
-          
+      // If no refresh token, logout immediately
+      if (!refreshToken) {
+        console.log('❌ No refresh token, logging out...');
+        logout();
+        // Clear any pending requests
+        return Promise.reject(new Error('Session expired. Please login again.'));
+      }
+      
+      try {
+        console.log('🔄 Attempting to refresh token...');
+        const response = await axios.post(`${config.apiUrl}/api/auth/refresh`, {
+          refreshToken,
+        });
+        
+        if (response.data?.accessToken) {
+          console.log('✅ Token refreshed successfully');
           useAuthStore.getState().updateToken(response.data.accessToken);
           
-          // Retry original request
-          error.config.headers.Authorization = `Bearer ${response.data.accessToken}`;
-          return client.request(error.config);
-        } catch (refreshError) {
-          logout();
+          // Retry original request with new token
+          originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
+          return client.request(originalRequest);
+        } else {
+          throw new Error('Invalid refresh response');
+        }
+      } catch (refreshError) {
+        console.error('❌ Token refresh failed:', refreshError);
+        // Refresh token is invalid or expired, logout and redirect
+        logout();
+        
+        // Only redirect if we're not already on login page
+        if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
-      } else {
-        logout();
-        window.location.href = '/login';
+        
+        return Promise.reject(new Error('Session expired. Please login again.'));
       }
     }
     
+    // For other errors, just reject
     return Promise.reject(error);
   }
 );

@@ -43,6 +43,12 @@ export default function CreateProjectPage() {
       navigate('/projects');
     },
     onError: (error) => {
+      // Don't show error for 401 - interceptor will handle redirect
+      if (error?.response?.status === 401) {
+        console.log('🔒 401 error in create project, interceptor will handle redirect');
+        return;
+      }
+      
       console.error('❌ Create project error:', error);
       console.error('❌ Error response:', error.response);
       console.error('❌ Error data:', error.response?.data);

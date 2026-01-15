@@ -9,10 +9,19 @@ export default function TaskDetailPage() {
   const { id } = useParams();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['task', id],
     queryFn: () => tasksAPI.getById(id),
   });
+
+  // Handle 401 errors - show loading while redirect happens
+  if (error?.response?.status === 401) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div>Session expired. Redirecting to login...</div>
+      </div>
+    );
+  }
 
   // Listen for real-time comment updates
   useSocketEvent('comment.added', () => {

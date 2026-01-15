@@ -12,7 +12,7 @@ export const projectController = {
         ? new mongoose.Types.ObjectId(req.user.userId)
         : req.user.userId;
       
-      // Prepare project data
+      // Prepare project data - only include valid project fields
       const projectData = {
         name: req.body.name?.trim(),
         description: req.body.description?.trim() || '',
@@ -26,6 +26,12 @@ export const projectController = {
           .filter(id => mongoose.Types.ObjectId.isValid(id))
           .map(id => new mongoose.Types.ObjectId(id));
       }
+      
+      // Remove any extra fields that shouldn't be in project data
+      // (like 'mode' from auth forms or other unexpected fields)
+      delete projectData.mode;
+      
+      console.log('📝 Cleaned project data:', projectData);
       
       const project = await projectService.create(projectData);
       

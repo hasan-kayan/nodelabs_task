@@ -77,8 +77,15 @@ export default function CreateProjectPage() {
       return;
     }
 
-    console.log('📤 Submitting project:', formData);
-    createMutation.mutate(formData);
+    // Prepare clean data (only project fields, no extra fields)
+    const projectData = {
+      name: formData.name.trim(),
+      description: formData.description?.trim() || '',
+      status: formData.status || 'active',
+    };
+
+    console.log('📤 Submitting project:', projectData);
+    createMutation.mutate(projectData);
   };
 
   const handleChange = (field, value) => {

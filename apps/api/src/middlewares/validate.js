@@ -17,9 +17,16 @@ export function validate(schema) {
       Object.entries(req.body).filter(([_, v]) => v !== undefined && v !== '')
     );
     
-    // Set default mode if not provided
-    if (!cleanBody.mode) {
+    // Set default mode if not provided (only for auth schemas)
+    // Don't add mode to non-auth requests
+    const isAuthSchema = schema.properties?.email && schema.properties?.phone;
+    if (isAuthSchema && !cleanBody.mode) {
       cleanBody.mode = 'login';
+    }
+    
+    // Remove mode from non-auth requests (like projects)
+    if (!isAuthSchema && cleanBody.mode) {
+      delete cleanBody.mode;
     }
     
     // Custom validation: at least email or phone must be provided

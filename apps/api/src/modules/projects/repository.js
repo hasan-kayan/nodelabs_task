@@ -11,6 +11,10 @@ const projectSchema = new mongoose.Schema({
     enum: ['active', 'archived', 'completed'],
     default: 'active',
   },
+  teamId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Team',
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -53,6 +57,7 @@ export const projectRepository = {
   async findById(id) {
     return Project.findById(id)
       .populate('createdBy', 'name email')
+      .populate('teamId', 'name')
       .populate('members', 'name email')
       .select('-__v');
   },
@@ -60,6 +65,7 @@ export const projectRepository = {
   async find(filter, options = {}) {
     const query = Project.find(filter)
       .populate('createdBy', 'name email')
+      .populate('teamId', 'name')
       .populate('members', 'name email')
       .select('-__v')
       .sort({ createdAt: -1 });
@@ -81,6 +87,7 @@ export const projectRepository = {
   async update(id, data) {
     return Project.findByIdAndUpdate(id, data, { new: true })
       .populate('createdBy', 'name email')
+      .populate('teamId', 'name')
       .populate('members', 'name email')
       .select('-__v');
   },

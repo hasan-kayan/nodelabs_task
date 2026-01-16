@@ -15,6 +15,9 @@ export const createProjectSchema = {
       enum: ['active', 'archived', 'completed'],
       default: 'active',
     },
+    teamId: {
+      type: 'string',
+    },
     members: {
       type: 'array',
       items: { type: 'string' },
@@ -39,6 +42,9 @@ export const updateProjectSchema = {
     status: { 
       type: 'string', 
       enum: ['active', 'archived', 'completed'],
+    },
+    teamId: {
+      type: 'string',
     },
     members: {
       type: 'array',

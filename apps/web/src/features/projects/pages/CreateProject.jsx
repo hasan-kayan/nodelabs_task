@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { projectsAPI } from '../../../api/projects.api.js';
+import { teamsAPI } from '../../../api/teams.api.js';
 import { PageHeader } from '../../../components/common/page-header.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { Input } from '../../../components/ui/input.jsx';
@@ -16,8 +17,15 @@ export default function CreateProjectPage() {
     name: '',
     description: '',
     status: 'active',
+    teamId: '',
   });
   const [errors, setErrors] = useState({});
+  
+  // Fetch user's teams
+  const { data: teamsData } = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => teamsAPI.getAll(),
+  });
 
   const createMutation = useMutation({
     mutationKey: ['createProject'],
@@ -89,6 +97,11 @@ export default function CreateProjectPage() {
       description: formData.description?.trim() || '',
       status: formData.status || 'active',
     };
+    
+    // Add teamId if selected
+    if (formData.teamId) {
+      projectData.teamId = formData.teamId;
+    }
 
     console.log('📤 Submitting project:', projectData);
     createMutation.mutate(projectData);
@@ -135,6 +148,22 @@ export default function CreateProjectPage() {
             rows={4}
             className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">Team (Optional)</label>
+          <select
+            value={formData.teamId}
+            onChange={(e) => handleChange('teamId', e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <option value="">No Team</option>
+            {teamsData?.data?.teams?.map((team) => (
+              <option key={team._id} value={team._id}>
+                {team.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>

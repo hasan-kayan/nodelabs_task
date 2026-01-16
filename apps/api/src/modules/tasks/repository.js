@@ -16,6 +16,10 @@ const taskSchema = new mongoose.Schema({
     enum: ['low', 'medium', 'high', 'urgent'],
     default: 'medium',
   },
+  teamId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Team',
+  },
   projectId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Project',
@@ -57,6 +61,7 @@ export const taskRepository = {
   async findById(id) {
     return Task.findById(id)
       .populate('projectId', 'name')
+      .populate('teamId', 'name')
       .populate('createdBy', 'name email')
       .populate('assignedTo', 'name email')
       .select('-__v');
@@ -65,6 +70,7 @@ export const taskRepository = {
   async find(filter, options = {}) {
     const query = Task.find(filter)
       .populate('projectId', 'name')
+      .populate('teamId', 'name')
       .populate('createdBy', 'name email')
       .populate('assignedTo', 'name email')
       .select('-__v')
@@ -87,6 +93,7 @@ export const taskRepository = {
   async update(id, data) {
     return Task.findByIdAndUpdate(id, data, { new: true })
       .populate('projectId', 'name')
+      .populate('teamId', 'name')
       .populate('createdBy', 'name email')
       .populate('assignedTo', 'name email')
       .select('-__v');

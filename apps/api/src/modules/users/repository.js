@@ -16,6 +16,29 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'member'],
     default: 'member',
   },
+  // User's teams (array of team memberships)
+  teams: [{
+    teamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Team',
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'member'],
+      default: 'member',
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
+    invitedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    joinedAt: Date,
+  }],
   name: String,
   avatar: String,
   createdAt: {

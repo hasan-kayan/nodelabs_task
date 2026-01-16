@@ -12,6 +12,7 @@ export function Button({ className, variant = 'default', size = 'default', ...pr
           'bg-secondary text-secondary-foreground hover:bg-secondary/80': variant === 'secondary',
           'bg-destructive text-destructive-foreground hover:bg-destructive/90': variant === 'destructive',
           'border border-input bg-background hover:bg-accent': variant === 'outline',
+          'hover:bg-accent hover:text-accent-foreground': variant === 'ghost',
           'h-10 px-4 py-2': size === 'default',
           'h-9 px-3': size === 'sm',
           'h-11 px-8': size === 'lg',

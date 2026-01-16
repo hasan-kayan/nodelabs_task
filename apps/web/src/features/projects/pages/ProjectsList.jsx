@@ -1,16 +1,60 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { projectsAPI } from '../../../api/projects.api.js';
+import { teamsAPI } from '../../../api/teams.api.js';
 import { PageHeader } from '../../../components/common/page-header.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { EmptyState } from '../../../components/common/empty-state.jsx';
 import ProjectTable from '../components/ProjectTable.jsx';
 import ProjectFilters from '../components/ProjectFilters.jsx';
+import { EditProjectModal } from '../components/EditProjectModal.jsx';
+import { useAuthStore } from '../../../hooks/use-auth.js';
+import { useRole } from '../../../hooks/use-role.js';
+import { useUIStore } from '../../../store/ui.store.js';
 
 export default function ProjectsListPage() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState({ search: '', status: '' });
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const { isAdmin } = useRole();
+  const addNotification = useUIStore((state) => state.addNotification);
+  const [filters, setFilters] = useState({ search: '', status: '', teamId: '' });
+  const [editingProject, setEditingProject] = useState(null);
+  
+  // Fetch user's teams for filter
+  const { data: teamsData } = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => teamsAPI.getAll(),
+    enabled: true,
+  });
+  
+  const deleteMutation = useMutation({
+    mutationFn: (id) => projectsAPI.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['projects']);
+      addNotification({
+        id: Date.now().toString(),
+        message: 'Project deleted successfully!',
+        type: 'success',
+      });
+    },
+    onError: (error) => {
+      if (error?.response?.status === 401) {
+        return;
+      }
+      const errorMessage = error.response?.data?.error || 'Failed to delete project';
+      addNotification({
+        id: Date.now().toString(),
+        message: errorMessage,
+        type: 'error',
+      });
+    },
+  });
+
+  const handleDelete = (project) => {
+    deleteMutation.mutate(project._id);
+  };
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['projects', filters],
@@ -68,25 +112,15 @@ export default function ProjectsListPage() {
         <Button onClick={() => navigate('/projects/new')}>New Project</Button>
       </PageHeader>
 
-      <ProjectFilters filters={filters} onFiltersChange={setFilters} />
+      <ProjectFilters 
+        filters={filters} 
+        onFiltersChange={setFilters}
+        teams={teamsData?.data?.teams || []}
+      />
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div>Loading projects...</div>
-        </div>
-      ) : error ? (
-        <div className="container mx-auto p-6">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <h3 className="text-red-800 font-semibold mb-2">Error loading projects</h3>
-            <p className="text-red-600 text-sm">
-              {error.response?.data?.error || error.message || 'Unknown error'}
-            </p>
-            {error.response?.status === 401 && (
-              <p className="text-red-600 text-sm mt-2">
-                Please check if you are logged in correctly.
-              </p>
-            )}
-          </div>
         </div>
       ) : !data?.data?.projects || data?.data?.projects?.length === 0 ? (
         <EmptyState
@@ -99,10 +133,32 @@ export default function ProjectsListPage() {
           }
         />
       ) : (
-        <ProjectTable
-          projects={data?.data?.projects || []}
-          onRowClick={(project) => navigate(`/projects/${project._id}`)}
-        />
+        <>
+          <ProjectTable
+            projects={data?.data?.projects || []}
+            onRowClick={(project) => navigate(`/projects/${project._id}`)}
+            onEdit={(project) => setEditingProject(project)}
+            onDelete={handleDelete}
+            canEdit={(project) => {
+              const projectCreatorId = project.createdBy?._id?.toString() || project.createdBy?.toString();
+              const currentUserId = user?.id?.toString();
+              return isAdmin || projectCreatorId === currentUserId;
+            }}
+            canDelete={(project) => {
+              const projectCreatorId = project.createdBy?._id?.toString() || project.createdBy?.toString();
+              const currentUserId = user?.id?.toString();
+              return isAdmin || projectCreatorId === currentUserId;
+            }}
+          />
+          
+          {editingProject && (
+            <EditProjectModal
+              project={editingProject}
+              open={!!editingProject}
+              onClose={() => setEditingProject(null)}
+            />
+          )}
+        </>
       )}
     </div>
   );

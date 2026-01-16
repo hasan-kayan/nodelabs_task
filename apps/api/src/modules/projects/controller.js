@@ -20,6 +20,11 @@ export const projectController = {
         createdBy,
       };
       
+      // Add teamId if provided
+      if (req.body.teamId && mongoose.Types.ObjectId.isValid(req.body.teamId)) {
+        projectData.teamId = new mongoose.Types.ObjectId(req.body.teamId);
+      }
+      
       // Add members if provided
       if (req.body.members && Array.isArray(req.body.members)) {
         projectData.members = req.body.members
@@ -50,13 +55,14 @@ export const projectController = {
 
   async getAll(req, res, next) {
     try {
-      const { page = 1, limit = 10, search, status } = req.query;
+      const { page = 1, limit = 10, search, status, teamId } = req.query;
       console.log('📋 Projects getAll - User:', req.user);
       const result = await projectService.getAll({
         page: parseInt(page),
         limit: parseInt(limit),
         search,
         status,
+        teamId,
         userId: req.user.userId, // JWT contains 'userId' field
         role: req.user.role,
       });

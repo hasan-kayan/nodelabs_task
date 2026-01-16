@@ -23,6 +23,25 @@ export const projectService = {
       throw new Error('createdBy is required');
     }
     
+    // Validate teamId if provided
+    if (data.teamId) {
+      if (!mongoose.Types.ObjectId.isValid(data.teamId)) {
+        throw new Error(`Invalid teamId field: ${data.teamId}`);
+      }
+      data.teamId = new mongoose.Types.ObjectId(data.teamId);
+      
+      // Verify user is member of the team
+      const { userRepository } = await import('../users/repository.js');
+      const user = await userRepository.findById(data.createdBy);
+      const userTeamIds = user?.teams
+        ?.filter(t => t.status === 'approved')
+        .map(t => t.teamId.toString()) || [];
+      
+      if (!userTeamIds.includes(data.teamId.toString())) {
+        throw new Error('Forbidden: You must be a member of the team to create projects in it');
+      }
+    }
+    
     try {
       const project = await projectRepository.create(data);
       console.log('✅ ProjectService.create - Success:', project._id);
@@ -34,7 +53,7 @@ export const projectService = {
   },
 
   async getAll(options) {
-    const { page, limit, search, status, userId, role } = options;
+    const { page, limit, search, status, userId, role, teamId } = options;
     
     const filter = {};
     
@@ -51,18 +70,37 @@ export const projectService = {
       filter.status = status;
     }
     
-    // Members can only see projects they're part of
+    // Team filter - if teamId is provided, show only projects in that team
+    if (teamId) {
+      const mongoose = (await import('mongoose')).default;
+      filter.teamId = mongoose.Types.ObjectId.isValid(teamId)
+        ? new mongoose.Types.ObjectId(teamId)
+        : teamId;
+    }
+    
+    // Members can only see projects from their teams or projects they created
     if (role === 'member' && userId) {
       const mongoose = (await import('mongoose')).default;
       const userIdObj = mongoose.Types.ObjectId.isValid(userId) 
         ? new mongoose.Types.ObjectId(userId) 
         : userId;
       
-      // Member can see projects they created or are members of
+      // Get user's teams
+      const { userRepository } = await import('../users/repository.js');
+      const user = await userRepository.findById(userId);
+      const userTeamIds = user?.teams
+        ?.filter(t => t.status === 'approved')
+        .map(t => t.teamId) || [];
+      
+      // Member can see:
+      // 1. Projects they created
+      // 2. Projects they are members of
+      // 3. Projects from teams they belong to (approved status)
       const memberProjects = {
         $or: [
           { createdBy: userIdObj },
           { members: userIdObj },
+          ...(userTeamIds.length > 0 ? [{ teamId: { $in: userTeamIds } }] : []),
         ],
       };
       
@@ -98,7 +136,28 @@ export const projectService = {
   },
 
   async getById(id, userId) {
-    return projectRepository.findById(id);
+    const project = await projectRepository.findById(id);
+    
+    if (!project) {
+      throw new Error('Project not found');
+    }
+    
+    // Check if user has access to this project's team
+    if (project.teamId) {
+      const { userRepository } = await import('../users/repository.js');
+      const user = await userRepository.findById(userId);
+      const userTeamIds = user?.teams
+        ?.filter(t => t.status === 'approved')
+        .map(t => t.teamId.toString()) || [];
+      
+      const projectTeamId = project.teamId._id?.toString() || project.teamId.toString();
+      
+      if (!userTeamIds.includes(projectTeamId)) {
+        throw new Error('Forbidden: You do not have access to this project');
+      }
+    }
+    
+    return project;
   },
 
   async update(id, data, userId, role) {
@@ -109,8 +168,33 @@ export const projectService = {
     }
 
     // Check permissions
-    if (role !== 'admin' && project.createdBy.toString() !== userId) {
-      throw new Error('Forbidden');
+    // Admin can update any project
+    // Members can only update projects they created
+    const projectCreatorId = project.createdBy?._id?.toString() || project.createdBy?.toString();
+    const currentUserId = userId?.toString();
+    
+    if (role !== 'admin' && projectCreatorId !== currentUserId) {
+      throw new Error('Forbidden: You can only update projects you created');
+    }
+    
+    // Validate teamId if provided
+    if (data.teamId) {
+      const mongoose = (await import('mongoose')).default;
+      if (!mongoose.Types.ObjectId.isValid(data.teamId)) {
+        throw new Error(`Invalid teamId field: ${data.teamId}`);
+      }
+      data.teamId = new mongoose.Types.ObjectId(data.teamId);
+      
+      // Verify user is member of the team
+      const { userRepository } = await import('../users/repository.js');
+      const user = await userRepository.findById(userId);
+      const userTeamIds = user?.teams
+        ?.filter(t => t.status === 'approved')
+        .map(t => t.teamId.toString()) || [];
+      
+      if (!userTeamIds.includes(data.teamId.toString())) {
+        throw new Error('Forbidden: You must be a member of the team to assign projects to it');
+      }
     }
 
     return projectRepository.update(id, data);

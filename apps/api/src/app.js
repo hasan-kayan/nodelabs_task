@@ -9,11 +9,14 @@ import logger from './utils/logger.js';
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
-
-// CORS
+// CORS - Must be before other middleware
 app.use(cors(corsConfig));
+
+// Security middleware (after CORS)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+}));
 
 // Body parser
 app.use(express.json());

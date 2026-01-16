@@ -207,10 +207,41 @@ export const projectService = {
       throw new Error('Project not found');
     }
 
-    if (role !== 'admin' && project.createdBy.toString() !== userId) {
-      throw new Error('Forbidden');
+    // Check permissions
+    const mongoose = (await import('mongoose')).default;
+    const userIdObj = mongoose.Types.ObjectId.isValid(userId)
+      ? new mongoose.Types.ObjectId(userId)
+      : userId;
+    
+    const projectCreatorId = project.createdBy?._id?.toString() || project.createdBy?.toString();
+    const currentUserId = userIdObj.toString();
+    
+    // Admin can delete any project
+    // Members can only delete projects they created
+    if (role !== 'admin' && projectCreatorId !== currentUserId) {
+      throw new Error('Forbidden: You can only delete projects you created');
     }
 
+    // Cascade delete: Delete all tasks and comments associated with this project
+    const projectIdObj = mongoose.Types.ObjectId.isValid(id)
+      ? new mongoose.Types.ObjectId(id)
+      : id;
+    
+    const { Task } = await import('../tasks/repository.js');
+    const { Comment } = await import('../comments/repository.js');
+    
+    // Delete all comments for tasks in this project
+    const tasks = await Task.find({ projectId: projectIdObj }).select('_id');
+    const taskIds = tasks.map(t => t._id);
+    
+    if (taskIds.length > 0) {
+      await Comment.deleteMany({ taskId: { $in: taskIds } });
+    }
+    
+    // Delete all tasks in this project
+    await Task.deleteMany({ projectId: projectIdObj });
+
+    // Delete the project
     return projectRepository.delete(id);
   },
 };

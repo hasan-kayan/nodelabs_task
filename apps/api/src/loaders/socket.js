@@ -6,10 +6,15 @@ import logger from '../utils/logger.js';
 let io = null;
 
 export function attachSocketIO(server) {
+  const corsOrigins = process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+    : ['http://localhost:5173', 'http://localhost:3000'];
+  
   io = new Server(server, {
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+      origin: corsOrigins,
       credentials: true,
+      methods: ['GET', 'POST'],
     },
     path: '/socket.io',
   });

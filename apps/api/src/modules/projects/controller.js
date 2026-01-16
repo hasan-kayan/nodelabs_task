@@ -101,9 +101,18 @@ export const projectController = {
 
   async delete(req, res, next) {
     try {
+      console.log('🗑️ Delete project - ID:', req.params.id);
+      console.log('🗑️ Delete project - User:', req.user);
       await projectService.delete(req.params.id, req.user.userId, req.user.role);
+      console.log('✅ Project deleted successfully');
       res.json({ message: 'Project deleted successfully' });
     } catch (error) {
+      console.error('❌ Delete project error:', error);
+      console.error('❌ Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
       next(error);
     }
   },

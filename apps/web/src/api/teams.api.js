@@ -9,4 +9,6 @@ export const teamsAPI = {
   inviteMember: (id, data) => client.post(`/api/teams/${id}/invite`, data),
   approveMember: (id, data) => client.post(`/api/teams/${id}/approve`, data),
   rejectMember: (id, data) => client.post(`/api/teams/${id}/reject`, data),
+  acceptInvitation: (id) => client.post(`/api/teams/${id}/accept`),
+  rejectInvitation: (id) => client.post(`/api/teams/${id}/decline`),
 };

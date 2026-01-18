@@ -117,9 +117,7 @@ export default function TeamsListPage() {
         title="Teams"
         description="Manage your teams and collaborate"
       >
-        {isAdmin && (
-          <Button onClick={() => navigate('/teams/new')}>New Team</Button>
-        )}
+        <Button onClick={() => navigate('/teams/new')}>New Team</Button>
       </PageHeader>
 
       {isLoading ? (
@@ -129,13 +127,11 @@ export default function TeamsListPage() {
       ) : !data?.data?.teams || data?.data?.teams?.length === 0 ? (
         <EmptyState
           title="No teams found"
-          description={isAdmin ? "Create your first team to get started" : "You haven't been added to any teams yet"}
+          description="Create your first team to get started"
           action={
-            isAdmin && (
-              <Button onClick={() => navigate('/teams/new')}>
-                Create Your First Team
-              </Button>
-            )
+            <Button onClick={() => navigate('/teams/new')}>
+              Create Your First Team
+            </Button>
           }
         />
       ) : (

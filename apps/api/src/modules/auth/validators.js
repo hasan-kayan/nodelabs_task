@@ -7,7 +7,9 @@ export const requestOTPSchema = {
     },
     phone: { 
       type: 'string', 
-      pattern: '^\\+?[1-9]\\d{1,14}$',
+      // Accept phone numbers: +1234567890, 05035032333, 1234567890, etc.
+      // Minimum 5 digits, maximum 15 digits (with optional + prefix)
+      pattern: '^\\+?\\d{5,15}$',
     },
     mode: { 
       type: 'string', 
@@ -28,7 +30,12 @@ export const verifyOTPSchema = {
   type: 'object',
   properties: {
     email: { type: 'string', format: 'email' },
-    phone: { type: 'string', pattern: '^\\+?[1-9]\\d{1,14}$' },
+    phone: { 
+      type: 'string', 
+      // Accept phone numbers: +1234567890, 05035032333, 1234567890, etc.
+      // Minimum 5 digits, maximum 15 digits (with optional + prefix)
+      pattern: '^\\+?\\d{5,15}$',
+    },
     otp: { type: 'string', pattern: '^\\d{6}$' },
     mode: { type: 'string', enum: ['login', 'register'], default: 'login' },
     name: { type: 'string', minLength: 1, maxLength: 100 },

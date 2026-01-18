@@ -1,6 +1,7 @@
 import { taskRepository } from './repository.js';
 import { publishEvent } from '../../events/publisher.js';
 import { getIO } from '../../loaders/socket.js';
+import { isTeamAdmin, isTeamMember } from '../teams/helpers.js';
 
 export const taskService = {
   async create(data) {
@@ -13,17 +14,27 @@ export const taskService = {
     }
     
     // Verify user has access to project's team
+    // Team admins can create tasks for any user in their team
+    // Regular members can only create tasks for themselves
     if (project.teamId) {
-      const { userRepository } = await import('../users/repository.js');
-      const user = await userRepository.findById(data.createdBy);
-      const userTeamIds = user?.teams
-        ?.filter(t => t.status === 'approved')
-        .map(t => t.teamId.toString()) || [];
+      const { teamRepository } = await import('../teams/repository.js');
+      const team = await teamRepository.findById(project.teamId);
       
-      const projectTeamId = project.teamId._id?.toString() || project.teamId.toString();
+      if (!team) {
+        throw new Error('Team not found');
+      }
       
-      if (!userTeamIds.includes(projectTeamId)) {
+      const isAdmin = isTeamAdmin(team, data.createdBy);
+      const isMember = isTeamMember(team, data.createdBy);
+      
+      if (!isAdmin && !isMember) {
         throw new Error('Forbidden: You must be a member of the project\'s team to create tasks');
+      }
+      
+      // If user is team admin, they can assign tasks to any team member
+      // If user is regular member, they can only assign tasks to themselves
+      if (!isAdmin && data.assignedTo && data.assignedTo.toString() !== data.createdBy.toString()) {
+        throw new Error('Forbidden: Regular members can only assign tasks to themselves. Team admins can assign tasks to any team member.');
       }
     }
     
@@ -178,8 +189,22 @@ export const taskService = {
     }
 
     // Check permissions
-    if (role !== 'admin' && task.createdBy.toString() !== userId) {
-      throw new Error('Forbidden');
+    // System admin can update any task
+    // Task creator can update their own tasks
+    // Team admin can update tasks in their team
+    const isCreator = task.createdBy.toString() === userId.toString();
+    let isTeamAdminUser = false;
+    
+    if (task.teamId && role !== 'admin' && !isCreator) {
+      const { teamRepository } = await import('../teams/repository.js');
+      const team = await teamRepository.findById(task.teamId);
+      if (team) {
+        isTeamAdminUser = isTeamAdmin(team, userId);
+      }
+    }
+    
+    if (role !== 'admin' && !isCreator && !isTeamAdminUser) {
+      throw new Error('Forbidden: Only task creator, team admin, or system admin can update tasks');
     }
 
     const updated = await taskRepository.update(id, data);
@@ -217,8 +242,23 @@ export const taskService = {
       throw new Error('Task not found');
     }
 
-    if (role !== 'admin' && task.createdBy.toString() !== userId) {
-      throw new Error('Forbidden');
+    // Check permissions
+    // System admin can delete any task
+    // Task creator can delete their own tasks
+    // Team admin can delete tasks in their team
+    const isCreator = task.createdBy.toString() === userId.toString();
+    let isTeamAdminUser = false;
+    
+    if (task.teamId && role !== 'admin' && !isCreator) {
+      const { teamRepository } = await import('../teams/repository.js');
+      const team = await teamRepository.findById(task.teamId);
+      if (team) {
+        isTeamAdminUser = isTeamAdmin(team, userId);
+      }
+    }
+    
+    if (role !== 'admin' && !isCreator && !isTeamAdminUser) {
+      throw new Error('Forbidden: Only task creator, team admin, or system admin can delete tasks');
     }
 
     return taskRepository.delete(id);

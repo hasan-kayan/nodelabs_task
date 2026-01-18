@@ -14,5 +14,16 @@ export default {
     url: process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672',
     exchange: process.env.RABBITMQ_EXCHANGE || 'taskboard_events',
   },
+  smtp: {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER || '',
+      pass: process.env.SMTP_PASS || '',
+    },
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@taskboard.com',
+  },
+  appUrl: process.env.APP_URL || 'http://localhost:5173',
   logLevel: process.env.LOG_LEVEL || 'info',
 };

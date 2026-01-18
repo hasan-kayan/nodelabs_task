@@ -159,10 +159,15 @@ export const teamService = {
       ? new mongoose.Types.ObjectId(invitedBy)
       : invitedBy;
     
-    const isTeamAdmin = team.members.some(
-      m => m.user._id.toString() === inviterId.toString() && m.role === 'admin'
-    );
-    const isCreator = team.createdBy._id.toString() === inviterId.toString();
+    // Handle both populated and non-populated createdBy
+    const createdById = team.createdBy?._id?.toString() || team.createdBy?.toString();
+    
+    // Check if inviter is team admin or creator
+    const isTeamAdmin = team.members.some(m => {
+      const memberUserId = m.user?._id?.toString() || m.user?.toString();
+      return memberUserId === inviterId.toString() && m.role === 'admin' && m.status === 'approved';
+    });
+    const isCreator = createdById === inviterId.toString();
     
     if (!isTeamAdmin && !isCreator) {
       throw new Error('Forbidden: Only team admins can invite members');
@@ -171,13 +176,14 @@ export const teamService = {
     // Find user by email
     const user = await userRepository.findByEmail(email);
     if (!user) {
-      throw new Error('User not found');
+      throw new Error(`User not found with email: ${email}`);
     }
     
     // Check if user is already a member
-    const existingMember = team.members.find(
-      m => m.user._id.toString() === user._id.toString()
-    );
+    const existingMember = team.members.find(m => {
+      const memberUserId = m.user?._id?.toString() || m.user?.toString();
+      return memberUserId === user._id.toString();
+    });
     
     if (existingMember) {
       throw new Error('User is already a member of this team');
@@ -194,6 +200,10 @@ export const teamService = {
     // Add team to user's teams array
     await this.addTeamToUser(user._id, teamId, role, 'pending', inviterId);
     
+    // Get inviter name for email
+    const inviter = await userRepository.findById(inviterId);
+    const inviterName = inviter?.name || 'A team admin';
+    
     // Publish invitation event
     await publishEvent('team.invitation', {
       teamId: teamId.toString(),
@@ -201,6 +211,7 @@ export const teamService = {
       userId: user._id.toString(),
       userEmail: user.email,
       invitedBy: inviterId.toString(),
+      inviterName,
       role,
       timestamp: new Date().toISOString(),
     });
@@ -280,6 +291,80 @@ export const teamService = {
     logger.info(`❌ Team member rejected: ${userId} from team ${teamId}`);
     
     return { message: 'Member rejected successfully' };
+  },
+
+  // User accepts their own invitation
+  async acceptInvitation(teamId, userId) {
+    const team = await teamRepository.findById(teamId);
+    if (!team) {
+      throw new Error('Team not found');
+    }
+    
+    const mongoose = (await import('mongoose')).default;
+    const userIdObj = mongoose.Types.ObjectId.isValid(userId)
+      ? new mongoose.Types.ObjectId(userId)
+      : userId;
+    
+    // Find the pending invitation
+    const member = team.members.find(m => {
+      const memberUserId = m.user?._id?.toString() || m.user?.toString();
+      return memberUserId === userIdObj.toString() && m.status === 'pending';
+    });
+    
+    if (!member) {
+      throw new Error('No pending invitation found for this user');
+    }
+    
+    // Update member status to approved
+    await teamRepository.updateMemberStatus(teamId, userId, 'approved');
+    
+    // Update user's teams array
+    await this.updateUserTeamStatus(userId, teamId, 'approved');
+    
+    // Publish approval event
+    await publishEvent('team.member.approved', {
+      teamId: teamId.toString(),
+      teamName: team.name,
+      userId: userId.toString(),
+      timestamp: new Date().toISOString(),
+    });
+    
+    logger.info(`✅ User ${userId} accepted invitation to team ${teamId}`);
+    
+    return { message: 'Invitation accepted successfully' };
+  },
+
+  // User rejects their own invitation
+  async rejectInvitation(teamId, userId) {
+    const team = await teamRepository.findById(teamId);
+    if (!team) {
+      throw new Error('Team not found');
+    }
+    
+    const mongoose = (await import('mongoose')).default;
+    const userIdObj = mongoose.Types.ObjectId.isValid(userId)
+      ? new mongoose.Types.ObjectId(userId)
+      : userId;
+    
+    // Find the pending invitation
+    const member = team.members.find(m => {
+      const memberUserId = m.user?._id?.toString() || m.user?.toString();
+      return memberUserId === userIdObj.toString() && m.status === 'pending';
+    });
+    
+    if (!member) {
+      throw new Error('No pending invitation found for this user');
+    }
+    
+    // Remove member from team
+    await teamRepository.removeMember(teamId, userId);
+    
+    // Remove team from user's teams array
+    await this.removeTeamFromUser(userId, teamId);
+    
+    logger.info(`❌ User ${userId} rejected invitation to team ${teamId}`);
+    
+    return { message: 'Invitation rejected successfully' };
   },
 
   // Helper methods for user-team relationship

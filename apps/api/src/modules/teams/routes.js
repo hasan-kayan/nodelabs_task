@@ -28,4 +28,8 @@ router.post('/:id/invite', validate(inviteMemberSchema), teamController.inviteMe
 router.post('/:id/approve', validate(approveMemberSchema), teamController.approveMember);
 router.post('/:id/reject', validate(rejectMemberSchema), teamController.rejectMember);
 
+// User accepts/rejects their own invitation
+router.post('/:id/accept', teamController.acceptInvitation);
+router.post('/:id/decline', teamController.rejectInvitation);
+
 export default router;

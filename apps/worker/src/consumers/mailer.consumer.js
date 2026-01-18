@@ -1,6 +1,7 @@
 import { getChannel } from '../config/rabbit.js';
 import config from '../config/env.js';
 import logger from '../utils/logger.js';
+import { sendOTPEmail, sendTeamInvitationEmail } from '../services/mailer.js';
 
 export async function setupMailerConsumer() {
   const channel = getChannel();
@@ -35,25 +36,23 @@ export async function setupMailerConsumer() {
           timestamp: content.timestamp,
         });
 
-      // STUB MODE: Just log the OTP
-      // In production, implement actual email/SMS sending:
-      // 
-      // if (content.email) {
-      //   await sendEmail({
-      //     to: content.email,
-      //     subject: 'Your OTP Code',
-      //     body: `Your OTP code is: ${otp} (valid for 5 minutes)`
-      //   });
-      // }
-      // 
-      // if (content.phone) {
-      //   await sendSMS({
-      //     to: content.phone,
-      //     message: `Your OTP code is: ${otp} (valid for 5 minutes)`
-      //   });
-      // }
+        // Send OTP via email if email is provided
+        if (content.email && content.otp) {
+          try {
+            await sendOTPEmail({
+              email: content.email,
+              otp: content.otp,
+              mode: content.mode || 'login',
+              name: content.name,
+            });
+            logger.info(`✅ OTP email sent to ${content.email}`);
+          } catch (error) {
+            logger.error(`❌ Failed to send OTP email to ${content.email}:`, error);
+            // Still log OTP for testing even if email fails
+          }
+        }
 
-        // Log OTP clearly for testing
+        // Log OTP clearly for testing (always log, even if email is sent)
         logger.info('');
         logger.info('═══════════════════════════════════════════════════════');
         logger.info(`📱 OTP CODE FOR TESTING:`);
@@ -64,6 +63,11 @@ export async function setupMailerConsumer() {
         logger.info(`   Valid for: 5 minutes`);
         logger.info('═══════════════════════════════════════════════════════');
         logger.info('');
+
+        // TODO: Implement SMS sending for phone numbers
+        if (content.phone && content.otp) {
+          logger.info(`📱 SMS OTP to ${content.phone}: ${content.otp} (SMS not implemented yet)`);
+        }
       } else if (routingKey === 'team.invitation') {
         logger.info('📧 Processing team invitation event:', {
           teamId: content.teamId,
@@ -74,6 +78,23 @@ export async function setupMailerConsumer() {
           timestamp: content.timestamp,
         });
         
+        // Get inviter name from event (if provided) or use default
+        const inviterName = content.inviterName || 'A team admin';
+
+        // Send invitation email
+        try {
+          await sendTeamInvitationEmail({
+            email: content.userEmail,
+            teamName: content.teamName,
+            inviterName,
+            role: content.role || 'member',
+            teamId: content.teamId,
+          });
+          logger.info(`✅ Team invitation email sent to ${content.userEmail}`);
+        } catch (error) {
+          logger.error(`❌ Failed to send team invitation email to ${content.userEmail}:`, error);
+        }
+        
         // Log invitation details for testing
         logger.info('');
         logger.info('═══════════════════════════════════════════════════════');
@@ -81,17 +102,10 @@ export async function setupMailerConsumer() {
         logger.info(`   Team: ${content.teamName}`);
         logger.info(`   To: ${content.userEmail}`);
         logger.info(`   Role: ${content.role}`);
-        logger.info(`   Invited by: ${content.invitedBy}`);
+        logger.info(`   Invited by: ${inviterName} (${content.invitedBy})`);
         logger.info(`   Status: Pending approval`);
         logger.info('═══════════════════════════════════════════════════════');
         logger.info('');
-        
-        // STUB MODE: In production, send actual email:
-        // await sendEmail({
-        //   to: content.userEmail,
-        //   subject: `You've been invited to join ${content.teamName}`,
-        //   body: `You have been invited to join the team "${content.teamName}" as a ${content.role}. Please log in to accept or reject the invitation.`
-        // });
       }
 
       channel.ack(msg);

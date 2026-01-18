@@ -12,10 +12,15 @@ export function validate(schema) {
   const validateFn = ajv.compile(schema);
 
   return (req, res, next) => {
+    // Log original request body for debugging
+    console.log('📥 Original request body:', req.body);
+    
     // Remove undefined and empty string values from body
     const cleanBody = Object.fromEntries(
       Object.entries(req.body).filter(([_, v]) => v !== undefined && v !== '')
     );
+    
+    console.log('🧹 Cleaned body:', cleanBody);
     
     // Set default mode if not provided (only for auth schemas)
     // Don't add mode to non-auth requests
@@ -33,6 +38,7 @@ export function validate(schema) {
     // Check if schema has email and phone properties (auth schemas)
     if (schema.properties?.email && schema.properties?.phone) {
       if (!cleanBody.email && !cleanBody.phone) {
+        console.log('❌ Validation failed: Neither email nor phone provided');
         return res.status(400).json({
           error: 'Validation failed',
           message: 'Either email or phone must be provided',
@@ -41,23 +47,30 @@ export function validate(schema) {
     }
     
     // Custom validation: name is required for register mode
+    // But only check AFTER we've cleaned the body and set mode
     if (cleanBody.mode === 'register') {
-      if (!cleanBody.name || cleanBody.name.trim().length === 0) {
+      if (!cleanBody.name || (typeof cleanBody.name === 'string' && cleanBody.name.trim().length === 0)) {
+        console.log('❌ Validation failed: Name is required for registration');
         return res.status(400).json({
           error: 'Validation failed',
           message: 'Name is required for registration',
+          received: cleanBody,
         });
       }
-      // Trim name
-      cleanBody.name = cleanBody.name.trim();
+      // Trim name if it's a string
+      if (typeof cleanBody.name === 'string') {
+        cleanBody.name = cleanBody.name.trim();
+      }
     }
+    
+    console.log('✅ Final body before AJV validation:', cleanBody);
     
     const valid = validateFn(cleanBody);
 
     if (!valid) {
       const firstError = validateFn.errors?.[0];
-      console.log('❌ Validation errors:', validateFn.errors);
-      console.log('📦 Request body:', cleanBody);
+      console.log('❌ AJV Validation errors:', validateFn.errors);
+      console.log('📦 Request body that failed:', cleanBody);
       return res.status(400).json({
         error: 'Validation failed',
         message: firstError?.message || 'Invalid request data',

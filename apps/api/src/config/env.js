@@ -30,7 +30,7 @@ export default {
       : ['http://localhost:5173', 'http://localhost:3000'],
   },
   rateLimit: {
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'),
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '10000'),
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
   },
   logLevel: process.env.LOG_LEVEL || 'info',

@@ -113,4 +113,30 @@ export const teamController = {
       next(error);
     }
   },
+
+  // User accepts their own invitation
+  async acceptInvitation(req, res, next) {
+    try {
+      const result = await teamService.acceptInvitation(
+        req.params.id,
+        req.user.userId
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // User rejects their own invitation
+  async rejectInvitation(req, res, next) {
+    try {
+      const result = await teamService.rejectInvitation(
+        req.params.id,
+        req.user.userId
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
 };

@@ -64,7 +64,9 @@ export const userRepository = {
   },
 
   async findByEmail(email) {
-    return User.findOne({ email });
+    if (!email) return null;
+    // Case-insensitive email search
+    return User.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
   },
 
   async findByPhone(phone) {

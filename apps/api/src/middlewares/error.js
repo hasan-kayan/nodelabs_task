@@ -1,8 +1,12 @@
 import logger from '../utils/logger.js';
 
 export function errorHandler(err, req, res, next) {
-  logger.error('Error:', err);
+  logger.error('Error:', err.message || err);
+  logger.error('Error name:', err.name);
   logger.error('Error stack:', err.stack);
+  if (err.message) {
+    logger.error('Error message:', err.message);
+  }
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {

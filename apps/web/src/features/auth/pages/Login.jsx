@@ -28,8 +28,10 @@ export default function LoginPage() {
       
       if (email) requestBody.email = email;
       if (phone) requestBody.phone = phone;
-      if (mode === 'register' && name && name.trim().length > 0) {
-        requestBody.name = name.trim();
+      
+      // For register mode, always include name (even if empty, backend will validate)
+      if (mode === 'register') {
+        requestBody.name = name ? name.trim() : '';
       }
       
       console.log('📤 Request OTP:', requestBody);
@@ -63,8 +65,10 @@ export default function LoginPage() {
       
       if (email) requestBody.email = email;
       if (phone) requestBody.phone = phone;
-      if (mode === 'register' && name && name.trim().length > 0) {
-        requestBody.name = name.trim();
+      
+      // For register mode, always include name (even if empty, backend will validate)
+      if (mode === 'register') {
+        requestBody.name = name ? name.trim() : '';
       }
       
       console.log('📤 Verify OTP request:', requestBody);

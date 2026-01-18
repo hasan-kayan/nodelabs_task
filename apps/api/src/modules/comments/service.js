@@ -1,6 +1,7 @@
 import { commentRepository } from './repository.js';
 import { publishEvent } from '../../events/publisher.js';
 import { getIO } from '../../loaders/socket.js';
+import { isTeamAdmin, isTeamMember } from '../teams/helpers.js';
 
 export const commentService = {
   async create(data) {
@@ -11,16 +12,19 @@ export const commentService = {
     }
     
     // Verify user has access to task's team
+    // Team admins and team members can add comments
     if (task.teamId) {
-      const { userRepository } = await import('../users/repository.js');
-      const user = await userRepository.findById(data.userId);
-      const userTeamIds = user?.teams
-        ?.filter(t => t.status === 'approved')
-        .map(t => t.teamId.toString()) || [];
+      const { teamRepository } = await import('../teams/repository.js');
+      const team = await teamRepository.findById(task.teamId);
       
-      const taskTeamId = task.teamId._id?.toString() || task.teamId.toString();
+      if (!team) {
+        throw new Error('Team not found');
+      }
       
-      if (!userTeamIds.includes(taskTeamId)) {
+      const isAdmin = isTeamAdmin(team, data.userId);
+      const isMember = isTeamMember(team, data.userId);
+      
+      if (!isAdmin && !isMember) {
         throw new Error('Forbidden: You must be a member of the task\'s team to add comments');
       }
     }
@@ -60,8 +64,23 @@ export const commentService = {
       throw new Error('Comment not found');
     }
 
-    if (comment.userId.toString() !== userId) {
-      throw new Error('Forbidden');
+    // Comment creator can update their own comments
+    // Team admin can update comments in their team
+    const isCreator = comment.userId.toString() === userId.toString();
+    let isTeamAdminUser = false;
+    
+    // Get task to check team
+    const task = await commentRepository.getTaskById(comment.taskId);
+    if (task?.teamId && !isCreator) {
+      const { teamRepository } = await import('../teams/repository.js');
+      const team = await teamRepository.findById(task.teamId);
+      if (team) {
+        isTeamAdminUser = isTeamAdmin(team, userId);
+      }
+    }
+    
+    if (!isCreator && !isTeamAdminUser) {
+      throw new Error('Forbidden: Only comment creator or team admin can update comments');
     }
 
     return commentRepository.update(id, data);
@@ -74,8 +93,23 @@ export const commentService = {
       throw new Error('Comment not found');
     }
 
-    if (comment.userId.toString() !== userId) {
-      throw new Error('Forbidden');
+    // Comment creator can delete their own comments
+    // Team admin can delete comments in their team
+    const isCreator = comment.userId.toString() === userId.toString();
+    let isTeamAdminUser = false;
+    
+    // Get task to check team
+    const task = await commentRepository.getTaskById(comment.taskId);
+    if (task?.teamId && !isCreator) {
+      const { teamRepository } = await import('../teams/repository.js');
+      const team = await teamRepository.findById(task.teamId);
+      if (team) {
+        isTeamAdminUser = isTeamAdmin(team, userId);
+      }
+    }
+    
+    if (!isCreator && !isTeamAdminUser) {
+      throw new Error('Forbidden: Only comment creator or team admin can delete comments');
     }
 
     return commentRepository.delete(id);

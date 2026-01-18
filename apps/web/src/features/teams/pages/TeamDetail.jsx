@@ -98,6 +98,57 @@ export default function TeamDetailPage() {
     },
   });
 
+  // User accepts their own invitation
+  const acceptInvitationMutation = useMutation({
+    mutationFn: () => teamsAPI.acceptInvitation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['team', id]);
+      queryClient.invalidateQueries(['teams']);
+      addNotification({
+        id: Date.now().toString(),
+        message: 'Invitation accepted successfully!',
+        type: 'success',
+      });
+    },
+    onError: (error) => {
+      if (error?.response?.status === 401) {
+        return;
+      }
+      const errorMessage = error.response?.data?.error || 'Failed to accept invitation';
+      addNotification({
+        id: Date.now().toString(),
+        message: errorMessage,
+        type: 'error',
+      });
+    },
+  });
+
+  // User rejects their own invitation
+  const rejectInvitationMutation = useMutation({
+    mutationFn: () => teamsAPI.rejectInvitation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['team', id]);
+      queryClient.invalidateQueries(['teams']);
+      addNotification({
+        id: Date.now().toString(),
+        message: 'Invitation rejected successfully!',
+        type: 'success',
+      });
+      navigate('/teams');
+    },
+    onError: (error) => {
+      if (error?.response?.status === 401) {
+        return;
+      }
+      const errorMessage = error.response?.data?.error || 'Failed to reject invitation';
+      addNotification({
+        id: Date.now().toString(),
+        message: errorMessage,
+        type: 'error',
+      });
+    },
+  });
+
   const handleInvite = (e) => {
     e.preventDefault();
     if (!inviteEmail.trim()) {
@@ -125,12 +176,18 @@ export default function TeamDetailPage() {
   // Check if user is team admin
   const currentUserId = user?.id?.toString();
   const isTeamAdmin = members.some(
-    m => m.user?._id?.toString() === currentUserId && m.role === 'admin'
+    m => m.user?._id?.toString() === currentUserId && m.role === 'admin' && m.status === 'approved'
   );
   const isCreator = teamData?.createdBy?._id?.toString() === currentUserId;
   const canManage = isAdmin || isTeamAdmin || isCreator;
 
-  const pendingMembers = members.filter(m => m.status === 'pending');
+  // Check if current user has a pending invitation
+  const userPendingInvitation = members.find(m => {
+    const memberUserId = m.user?._id?.toString() || m.user?.toString();
+    return memberUserId === currentUserId && m.status === 'pending';
+  });
+
+  const pendingMembers = members.filter(m => m.status === 'pending' && (m.user?._id?.toString() || m.user?.toString()) !== currentUserId);
   const approvedMembers = members.filter(m => m.status === 'approved');
 
   return (
@@ -147,6 +204,32 @@ export default function TeamDetailPage() {
       </PageHeader>
 
       <div className="mt-6 space-y-6">
+        {/* Show pending invitation for current user */}
+        {userPendingInvitation && (
+          <div className="mb-6 p-4 border-2 border-yellow-500 rounded-lg bg-yellow-50">
+            <h4 className="text-lg font-semibold mb-2 text-yellow-800">You have a pending invitation</h4>
+            <p className="text-sm text-yellow-700 mb-4">
+              You've been invited to join this team as a <strong>{userPendingInvitation.role}</strong>.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => acceptInvitationMutation.mutate()}
+                disabled={acceptInvitationMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {acceptInvitationMutation.isPending ? 'Accepting...' : 'Accept Invitation'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => rejectInvitationMutation.mutate()}
+                disabled={rejectInvitationMutation.isPending}
+              >
+                {rejectInvitationMutation.isPending ? 'Rejecting...' : 'Decline Invitation'}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div>
           <h3 className="font-semibold mb-4">Team Members</h3>
           

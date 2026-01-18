@@ -36,7 +36,12 @@ function App() {
           <Route path="/tasks/:id" element={<TaskDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/" element={<Navigate to="/teams" replace />} />
+          {/* Catch-all route: redirect unknown routes to dashboard */}
+          <Route path="*" element={<Navigate to="/teams" replace />} />
         </Route>
+        
+        {/* Catch-all for unauthenticated routes */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -19,6 +19,7 @@ export function ThemeToggle() {
   const CurrentIcon = currentTheme.icon;
 
   const handleThemeChange = (newTheme) => {
+    console.log('Theme changing to:', newTheme);
     setTheme(newTheme);
     setIsOpen(false);
   };
@@ -55,15 +56,9 @@ export function ThemeToggle() {
       </Button>
 
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          
-          {/* Dropdown Menu */}
-          <div className="absolute right-0 top-full mt-2 z-50 w-40 rounded-md border bg-popover p-1 shadow-md">
+        <div 
+          className="absolute right-0 top-full mt-2 z-[100] w-40 rounded-md border bg-popover p-1 shadow-lg"
+        >
             {themes.map((themeOption) => {
               const Icon = themeOption.icon;
               const isSelected = theme === themeOption.value;
@@ -71,10 +66,15 @@ export function ThemeToggle() {
               return (
                 <button
                   key={themeOption.value}
-                  onClick={() => handleThemeChange(themeOption.value)}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleThemeChange(themeOption.value);
+                  }}
                   className={cn(
                     'w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm transition-colors',
-                    'hover:bg-accent hover:text-accent-foreground',
+                    'hover:bg-accent hover:text-accent-foreground cursor-pointer',
                     isSelected && 'bg-accent text-accent-foreground'
                   )}
                 >
@@ -84,8 +84,7 @@ export function ThemeToggle() {
                 </button>
               );
             })}
-          </div>
-        </>
+        </div>
       )}
     </div>
   );

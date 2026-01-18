@@ -21,14 +21,27 @@ export function ThemeProvider({ children }) {
   });
 
   const [resolvedTheme, setResolvedTheme] = useState(() => {
-    if (theme === 'system') {
-      if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('theme') || 'system';
+      if (stored === 'system') {
         return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
-      return 'light';
+      return stored;
     }
-    return theme;
+    return 'light';
   });
+
+  // Theme değiştiğinde resolvedTheme'u güncelle
+  useEffect(() => {
+    if (theme === 'system') {
+      if (typeof window !== 'undefined') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setResolvedTheme(prefersDark ? 'dark' : 'light');
+      }
+    } else {
+      setResolvedTheme(theme);
+    }
+  }, [theme]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -76,8 +89,11 @@ export function ThemeProvider({ children }) {
   };
 
   const setThemeDirect = (newTheme) => {
+    console.log('setThemeDirect called with:', newTheme);
     if (['light', 'dark', 'system'].includes(newTheme)) {
       setTheme(newTheme);
+    } else {
+      console.warn('Invalid theme value:', newTheme);
     }
   };
 

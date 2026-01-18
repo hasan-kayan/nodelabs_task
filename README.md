@@ -243,3 +243,94 @@ I get stick to the provided case-study explanations. You can check the tree outp
 - JWT access & refresh tokens --> OTP tokens are saved in Redis, time sensitivity managements can be done from .env file. 
 -  Role-based access control (Admin/Member) --> There are two types of users Admin/User, anyway task mentions RBAC so I have added this but for some extra functionality, at registiration everybody is a user but anyone who has created their own team can invite other users into the team as member or admin. At this project we use RabiMQ as message brokker, in here each API process can be considered as production and workers here are the consumers, so rbac is also contains a simple RabitMQ process to mention. 
 - Real-time updates via Socket.io --> For each authentication process we use socket.io. Also for team proceses we use socket to handle delays and real-time syncronazation. 
+
+
+
+
+
+
+
+
+
+
+API Endpoints
+Authentication
+
+    POST /api/auth/otp/request - Request OTP
+    POST /api/auth/otp/verify - Verify OTP
+    POST /api/auth/refresh - Refresh token
+    POST /api/auth/logout - Logout
+
+Projects
+
+    GET /api/projects - List projects
+    GET /api/projects/:id - Get project
+    POST /api/projects - Create project
+    PUT /api/projects/:id - Update project
+    DELETE /api/projects/:id - Delete project
+
+Tasks
+
+    GET /api/tasks - List tasks
+    GET /api/tasks/:id - Get task
+    POST /api/tasks - Create task
+    PUT /api/tasks/:id - Update task
+    DELETE /api/tasks/:id - Delete task
+
+Comments
+
+    GET /api/comments/task/:taskId - Get comments
+    POST /api/comments - Create comment
+    PUT /api/comments/:id - Update comment
+    DELETE /api/comments/:id - Delete comment
+
+Socket.io Events
+Client → Server
+
+    room:join - Join project room
+    room:leave - Leave project room
+    task:subscribe - Subscribe to task updates
+    notification:subscribe - Subscribe to notifications
+
+Server → Client
+
+    task.created - Task created
+    task.updated - Task updated
+    task.assigned - Task assigned
+    comment.added - Comment added
+
+RabbitMQ Topics
+
+    otp.requested - OTP requested event
+    task.created - Task created event
+    task.assigned - Task assigned event
+    task.updated - Task updated event
+    comment.added - Comment added event
+
+Development
+Running Tests
+
+pnpm test
+
+Linting
+
+pnpm lint
+
+Formatting
+
+pnpm format
+
+Docker Commands
+
+# Start all services
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+
+# View logs
+docker-compose logs -f
+
+# Rebuild services
+docker-compose up -d --build
+

@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../hooks/use-auth.js';
 import { Button } from '../components/ui/button.jsx';
+import { ThemeToggle } from '../components/ui/theme-toggle.jsx';
 import { ToastContainer } from '../components/ui/toast.jsx';
 
 export default function AppLayout() {
@@ -44,6 +45,7 @@ export default function AppLayout() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <span className="text-sm text-muted-foreground">{user?.email}</span>
             <Button variant="outline" onClick={handleLogout}>
               Logout

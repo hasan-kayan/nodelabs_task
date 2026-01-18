@@ -204,8 +204,18 @@ export const teamService = {
     const inviter = await userRepository.findById(inviterId);
     const inviterName = inviter?.name || 'A team admin';
     
+    logger.info('📧 [TEAM SERVICE] Preparing to publish invitation event...', {
+      teamId: teamId.toString(),
+      teamName: team.name,
+      userId: user._id.toString(),
+      userEmail: user.email,
+      invitedBy: inviterId.toString(),
+      inviterName,
+      role,
+    });
+    
     // Publish invitation event
-    await publishEvent('team.invitation', {
+    const eventData = {
       teamId: teamId.toString(),
       teamName: team.name,
       userId: user._id.toString(),
@@ -214,9 +224,23 @@ export const teamService = {
       inviterName,
       role,
       timestamp: new Date().toISOString(),
-    });
+    };
     
-    logger.info(`📧 Team invitation sent: ${team.name} -> ${email}`);
+    logger.info('📧 [TEAM SERVICE] Publishing invitation event with data:', eventData);
+    
+    try {
+      await publishEvent('team.invitation', eventData);
+      logger.info(`✅ [TEAM SERVICE] Invitation event published successfully: ${team.name} -> ${email}`);
+    } catch (error) {
+      logger.error('❌ [TEAM SERVICE] Failed to publish invitation event:', {
+        error: error.message,
+        stack: error.stack,
+        eventData,
+      });
+      throw error;
+    }
+    
+    logger.info(`📧 [TEAM SERVICE] Team invitation process completed: ${team.name} -> ${email}`);
     
     return { message: 'Invitation sent successfully' };
   },

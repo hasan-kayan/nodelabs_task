@@ -1,6 +1,28 @@
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join, resolve } from 'path';
 
-dotenv.config();
+// Get the directory of the current module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env from project root
+// worker/src/config -> worker/src -> worker -> root (three levels up)
+// But __dirname is already at worker level when running from worker directory
+// So we need to go up one more level to reach project root
+const projectRoot = resolve(__dirname, '../../../../');
+const envPath = join(projectRoot, '.env');
+
+// Try to load .env from project root
+const result = dotenv.config({ path: envPath });
+
+if (result.error) {
+  console.warn(`⚠️ Failed to load .env from ${envPath}:`, result.error.message);
+  // Fallback to default dotenv behavior (current directory)
+  dotenv.config();
+} else {
+  console.log(`✅ Loaded .env from ${envPath}`);
+}
 
 export default {
   nodeEnv: process.env.NODE_ENV || 'development',

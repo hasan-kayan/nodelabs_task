@@ -232,39 +232,6 @@ export default function TeamDetailPage() {
 
         <div>
           <h3 className="font-semibold mb-4">Team Members</h3>
-          
-          {pendingMembers.length > 0 && canManage && (
-            <div className="mb-6">
-              <h4 className="text-sm font-medium mb-2 text-yellow-600">Pending Invitations</h4>
-              <div className="space-y-2">
-                {pendingMembers.map((member) => (
-                  <div key={member.user?._id} className="flex items-center justify-between border rounded p-3">
-                    <div>
-                      <p className="font-medium">{member.user?.name || member.user?.email}</p>
-                      <p className="text-sm text-muted-foreground">Role: {member.role}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => approveMutation.mutate(member.user._id)}
-                        disabled={approveMutation.isPending}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => rejectMutation.mutate(member.user._id)}
-                        disabled={rejectMutation.isPending}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div>
             <h4 className="text-sm font-medium mb-2">Active Members</h4>

@@ -12,9 +12,12 @@
     "test": "pnpm --filter './apps/*' test",
     "lint": "pnpm --filter './apps/*' lint",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
+    "docker:start": "docker-compose up -d --build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f"
+    "docker:logs": "docker-compose logs -f",
+    "docker:restart": "docker-compose restart",
+    "docker:clean": "docker-compose down -v"
   },
   "devDependencies": {
     "prettier": "^3.2.5",

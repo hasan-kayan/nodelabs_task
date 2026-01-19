@@ -1,94 +1,85 @@
-version: '3.8'
-
 services:
   # MongoDB Database
   mongodb:
-    image: mongo:7
-    container_name: taskboard_mongodb
-    environment:
-      MONGO_INITDB_DATABASE: taskboard
+    image: mongo:7.0
+    container_name: taskboard-mongodb
+    restart: unless-stopped
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: taskboard
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - taskboard-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - taskboard-network
 
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: taskboard_redis
+    container_name: taskboard-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - taskboard-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - taskboard-network
+    command: redis-server --appendonly yes
 
-  # RabbitMQ Message Queue
+  # RabbitMQ Message Broker
   rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: taskboard_rabbitmq
+    image: rabbitmq:3.12-management-alpine
+    container_name: taskboard-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
-    ports:
-      - "5672:5672"   # AMQP port
-      - "15672:15672" # Management UI port
+      RABBITMQ_DEFAULT_VHOST: /
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - taskboard-network
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - taskboard-network
 
   # API Service
   api:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: base
-    container_name: taskboard_api
-    command: sh -c "cd /app/apps/api && pnpm start"
+      dockerfile: apps/api/Dockerfile
+    container_name: taskboard-api
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: production
+      API_PORT: 3000
       MONGODB_URI: mongodb://mongodb:27017/taskboard
       REDIS_HOST: redis
       REDIS_PORT: 6379
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-super-secret-refresh-key-change-in-production}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
-      APP_URL: ${APP_URL:-http://localhost:5173}
-      PORT: 3000
+      RABBITMQ_EXCHANGE: taskboard_events
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
+      CORS_ORIGIN: http://localhost:5173,http://web:5173
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      # SMTP Configuration
-      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-}
-      # OTP Configuration
-      OTP_EXPIRY: ${OTP_EXPIRY:-300}
-      # Rate Limiting
-      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
-      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-100}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -96,40 +87,30 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    volumes:
-      - ./apps/api:/app/apps/api
-      - ./packages:/app/packages
-      - /app/node_modules
-      - /app/apps/api/node_modules
     networks:
       - taskboard-network
-    restart: unless-stopped
 
   # Worker Service
   worker:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: base
-    container_name: taskboard_worker
-    command: sh -c "cd /app/apps/worker && pnpm start"
+      dockerfile: apps/worker/Dockerfile
+    container_name: taskboard-worker
+    restart: unless-stopped
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: production
       MONGODB_URI: mongodb://mongodb:27017/taskboard
       REDIS_HOST: redis
       REDIS_PORT: 6379
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      APP_URL: ${APP_URL:-http://localhost:5173}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      # SMTP Configuration
+      RABBITMQ_EXCHANGE: taskboard_events
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-}
-      # OTP Configuration
-      OTP_EXPIRY: ${OTP_EXPIRY:-300}
+      SMTP_FROM: ${SMTP_FROM:-noreply@taskboard.com}
+      APP_URL: http://localhost:5173
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -139,60 +120,33 @@ services:
         condition: service_healthy
       api:
         condition: service_started
-    volumes:
-      - ./apps/worker:/app/apps/worker
-      - ./packages:/app/packages
-      - /app/node_modules
-      - /app/apps/worker/node_modules
     networks:
       - taskboard-network
-    restart: unless-stopped
 
   # Web Service (Frontend)
   web:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: web-nginx
-    container_name: taskboard_web
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_WS_URL: ${VITE_WS_URL:-http://localhost:3000}
+    container_name: taskboard-web
+    restart: unless-stopped
     ports:
-      - "5173:80"
+      - "5173:5173"
+    environment:
+      NODE_ENV: production
     depends_on:
       - api
     networks:
       - taskboard-network
-    restart: unless-stopped
 
-  # Single Container Option (Alternative - uncomment to use)
-  # taskboard-all:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.single
-  #   container_name: taskboard_all
-  #   ports:
-  #     - "3000:3000"
-  #     - "5173:80"
-  #   environment:
-  #     NODE_ENV: production
-  #     MONGODB_URI: mongodb://mongodb:27017/taskboard
-  #     REDIS_HOST: redis
-  #     REDIS_PORT: 6379
-  #     RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #     rabbitmq:
-  #       condition: service_healthy
-  #   networks:
-  #     - taskboard-network
+networks:
+  taskboard-network:
+    driver: bridge
 
 volumes:
   mongodb_data:
   redis_data:
   rabbitmq_data:
-
-networks:
-  taskboard-network:
-    driver: bridge

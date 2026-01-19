@@ -305,6 +305,7 @@ RabbitMQ Topics
 
 
 # Quick Start 
+Befor we start, I have provided an .env.example here but I also sent and env.env file via mail to you. With all my respect I want you to create a .env file at rout path and write the content of env.env file inside that file to make all system works and you can examine all the features. 
 
 You can run all system with single command:
 

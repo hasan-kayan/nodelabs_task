@@ -30,15 +30,17 @@ export const projectService = {
       }
       data.teamId = new mongoose.Types.ObjectId(data.teamId);
       
-      // Verify user is member of the team
-      const { userRepository } = await import('../users/repository.js');
-      const user = await userRepository.findById(data.createdBy);
-      const userTeamIds = user?.teams
-        ?.filter(t => t.status === 'approved')
-        .map(t => t.teamId.toString()) || [];
+      // Verify user is team admin (only team admins can create projects)
+      const { teamRepository } = await import('../teams/repository.js');
+      const { isTeamAdmin } = await import('../teams/helpers.js');
+      const team = await teamRepository.findById(data.teamId);
       
-      if (!userTeamIds.includes(data.teamId.toString())) {
-        throw new Error('Forbidden: You must be a member of the team to create projects in it');
+      if (!team) {
+        throw new Error('Team not found');
+      }
+      
+      if (!isTeamAdmin(team, data.createdBy)) {
+        throw new Error('Forbidden: Only team admins can create projects in a team');
       }
     }
     

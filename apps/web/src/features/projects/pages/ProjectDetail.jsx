@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { projectsAPI } from '../../../api/projects.api.js';
 import { tasksAPI } from '../../../api/tasks.api.js';
@@ -7,9 +7,11 @@ import { PageHeader } from '../../../components/common/page-header.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import TaskTable from '../../tasks/components/TaskTable.jsx';
 import { EditProjectModal } from '../components/EditProjectModal.jsx';
+import { CreateTaskModal } from '../components/CreateTaskModal.jsx';
 import { useSocketEvent } from '../../../hooks/use-socket.js';
 import { useAuthStore } from '../../../hooks/use-auth.js';
 import { useRole } from '../../../hooks/use-role.js';
+import { Plus } from 'lucide-react';
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
@@ -18,6 +20,7 @@ export default function ProjectDetailPage() {
   const { user } = useAuthStore();
   const { isAdmin } = useRole();
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false);
   
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery({
     queryKey: ['project', id],
@@ -61,13 +64,17 @@ export default function ProjectDetailPage() {
         title={projectData?.name}
         description={projectData?.description}
       >
-        {canEdit && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {canEdit && (
             <Button variant="outline" onClick={() => setEditModalOpen(true)}>
               Edit Project
             </Button>
-          </div>
-        )}
+          )}
+          <Button onClick={() => setCreateTaskModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Task
+          </Button>
+        </div>
       </PageHeader>
 
       <div className="mt-6 space-y-6">
@@ -84,9 +91,18 @@ export default function ProjectDetailPage() {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold mb-4">Tasks</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Tasks</h2>
+            <span className="text-sm text-muted-foreground">
+              {tasks?.data?.tasks?.length || 0} task(s)
+            </span>
+          </div>
           {tasksLoading ? (
             <div>Loading tasks...</div>
+          ) : tasks?.data?.tasks?.length === 0 ? (
+            <div className="text-center py-8 border rounded text-muted-foreground">
+              No tasks yet. Create one to get started!
+            </div>
           ) : (
             <TaskTable 
               tasks={tasks?.data?.tasks || []} 
@@ -97,11 +113,18 @@ export default function ProjectDetailPage() {
       </div>
 
       {projectData && (
-        <EditProjectModal
-          project={projectData}
-          open={editModalOpen}
-          onClose={() => setEditModalOpen(false)}
-        />
+        <>
+          <EditProjectModal
+            project={projectData}
+            open={editModalOpen}
+            onClose={() => setEditModalOpen(false)}
+          />
+          <CreateTaskModal
+            projectId={id}
+            open={createTaskModalOpen}
+            onClose={() => setCreateTaskModalOpen(false)}
+          />
+        </>
       )}
     </div>
   );

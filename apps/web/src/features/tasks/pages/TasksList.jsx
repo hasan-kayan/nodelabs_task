@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { tasksAPI } from '../../../api/tasks.api.js';
 import { PageHeader } from '../../../components/common/page-header.jsx';
 import TaskTable from '../components/TaskTable.jsx';
+import { CreateTaskModal } from '../../projects/components/CreateTaskModal.jsx';
 import { useRole } from '../../../hooks/use-role.js';
 import { Input } from '../../../components/ui/input.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { Dropdown } from '../../../components/ui/dropdown.jsx';
+import { Plus } from 'lucide-react';
 
 export default function TasksListPage() {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ export default function TasksListPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false);
   const limit = 20;
 
   const { data, isLoading, error } = useQuery({
@@ -52,7 +55,12 @@ export default function TasksListPage() {
       <PageHeader 
         title={isAdmin ? "All Tasks" : "My Tasks"}
         description={isAdmin ? "View and manage all tasks across all teams" : "View your assigned tasks"}
-      />
+      >
+        <Button onClick={() => setCreateTaskModalOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Task
+        </Button>
+      </PageHeader>
 
       <div className="mt-6 space-y-4">
         {/* Filters */}
@@ -132,6 +140,11 @@ export default function TasksListPage() {
           </>
         )}
       </div>
+
+      <CreateTaskModal
+        open={createTaskModalOpen}
+        onClose={() => setCreateTaskModalOpen(false)}
+      />
     </div>
   );
 }

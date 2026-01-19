@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { teamsAPI } from '../../../api/teams.api.js';
+import { projectsAPI } from '../../../api/projects.api.js';
+import { tasksAPI } from '../../../api/tasks.api.js';
 import { PageHeader } from '../../../components/common/page-header.jsx';
 import { Button } from '../../../components/ui/button.jsx';
 import { Input } from '../../../components/ui/input.jsx';
@@ -9,6 +11,9 @@ import { Modal } from '../../../components/ui/modal.jsx';
 import { useUIStore } from '../../../store/ui.store.js';
 import { useAuthStore } from '../../../hooks/use-auth.js';
 import { useRole } from '../../../hooks/use-role.js';
+import { CreateProjectModal } from '../components/CreateProjectModal.jsx';
+import { AssignTaskModal } from '../components/AssignTaskModal.jsx';
+import { CheckCircle2, Circle, Clock, XCircle, Plus, User } from 'lucide-react';
 
 export default function TeamDetailPage() {
   const { id } = useParams();
@@ -21,11 +26,24 @@ export default function TeamDetailPage() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
+  const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
+  const [assignTaskModalOpen, setAssignTaskModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
 
   const { data: team, isLoading, error } = useQuery({
     queryKey: ['team', id],
     queryFn: () => teamsAPI.getById(id),
   });
+
+  // Fetch projects for this team
+  const { data: projectsData, isLoading: projectsLoading } = useQuery({
+    queryKey: ['projects', { teamId: id }],
+    queryFn: () => projectsAPI.getAll({ teamId: id, limit: 100 }),
+    enabled: !!id,
+  });
+
+  const projects = projectsData?.data?.projects || [];
+
 
   const inviteMutation = useMutation({
     mutationFn: (data) => teamsAPI.inviteMember(id, data),
@@ -196,11 +214,19 @@ export default function TeamDetailPage() {
         title={teamData?.name}
         description={teamData?.description}
       >
-        {canManage && (
-          <Button onClick={() => setInviteModalOpen(true)}>
-            Invite Member
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {canManage && (
+            <>
+              <Button onClick={() => setInviteModalOpen(true)}>
+                Invite Member
+              </Button>
+              <Button onClick={() => setCreateProjectModalOpen(true)} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Project
+              </Button>
+            </>
+          )}
+        </div>
       </PageHeader>
 
       <div className="mt-6 space-y-6">
@@ -230,6 +256,37 @@ export default function TeamDetailPage() {
           </div>
         )}
 
+        {/* Projects Section */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-lg">Projects</h3>
+          </div>
+          
+          {projectsLoading ? (
+            <div className="text-muted-foreground">Loading projects...</div>
+          ) : projects.length === 0 ? (
+            <div className="text-muted-foreground p-4 border rounded">
+              {canManage ? 'No projects yet. Create one to get started!' : 'No projects in this team.'}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {projects.map((project) => (
+                <ProjectTasksCard
+                  key={project._id}
+                  project={project}
+                  teamId={id}
+                  canManage={canManage}
+                  onMemberClick={(member) => {
+                    setSelectedMember(member);
+                    setAssignTaskModalOpen(true);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Team Members Section */}
         <div>
           <h3 className="font-semibold mb-4">Team Members</h3>
 
@@ -237,13 +294,31 @@ export default function TeamDetailPage() {
             <h4 className="text-sm font-medium mb-2">Active Members</h4>
             <div className="space-y-2">
               {approvedMembers.map((member) => (
-                <div key={member.user?._id} className="flex items-center justify-between border rounded p-3">
-                  <div>
-                    <p className="font-medium">{member.user?.name || member.user?.email}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Role: {member.role} • Joined: {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : 'N/A'}
-                    </p>
+                <div 
+                  key={member.user?._id} 
+                  className={`flex items-center justify-between border rounded p-3 ${canManage ? 'cursor-pointer hover:bg-accent transition-colors' : ''}`}
+                  onClick={() => {
+                    if (canManage) {
+                      setSelectedMember({
+                        id: member.user?._id,
+                        name: member.user?.name || member.user?.email,
+                      });
+                      setAssignTaskModalOpen(true);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{member.user?.name || member.user?.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Role: {member.role} • Joined: {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
                   </div>
+                  {canManage && (
+                    <span className="text-xs text-muted-foreground">Click to assign task</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -298,6 +373,98 @@ export default function TeamDetailPage() {
           </form>
         </div>
       </Modal>
+
+      <CreateProjectModal
+        teamId={id}
+        open={createProjectModalOpen}
+        onClose={() => setCreateProjectModalOpen(false)}
+      />
+
+      {selectedMember && (
+        <AssignTaskModal
+          teamId={id}
+          userId={selectedMember.id}
+          userName={selectedMember.name}
+          open={assignTaskModalOpen}
+          onClose={() => {
+            setAssignTaskModalOpen(false);
+            setSelectedMember(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Project Tasks Card Component
+function ProjectTasksCard({ project, teamId, canManage, onMemberClick }) {
+  const navigate = useNavigate();
+  const { data: tasksData, isLoading: tasksLoading } = useQuery({
+    queryKey: ['tasks', { projectId: project._id }],
+    queryFn: () => tasksAPI.getAll({ projectId: project._id, limit: 50 }),
+  });
+
+  const tasks = tasksData?.data?.tasks || [];
+  const statusConfig = {
+    todo: { label: 'To Do', icon: Circle, color: 'text-gray-500' },
+    in_progress: { label: 'In Progress', icon: Clock, color: 'text-blue-500' },
+    done: { label: 'Done', icon: CheckCircle2, color: 'text-green-500' },
+    blocked: { label: 'Blocked', icon: XCircle, color: 'text-red-500' },
+  };
+
+  return (
+    <div className="border rounded-lg p-4 bg-card">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h4 className="font-semibold text-lg">{project.name}</h4>
+          {project.description && (
+            <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(`/projects/${project._id}`)}
+        >
+          View Details
+        </Button>
+      </div>
+
+      <div className="mt-4">
+        <h5 className="text-sm font-medium mb-2 text-muted-foreground">Tasks ({tasks.length})</h5>
+        {tasksLoading ? (
+          <div className="text-sm text-muted-foreground">Loading tasks...</div>
+        ) : tasks.length === 0 ? (
+          <div className="text-sm text-muted-foreground p-2">No tasks in this project</div>
+        ) : (
+          <div className="space-y-2">
+            {tasks.map((task) => {
+              const status = statusConfig[task.status] || statusConfig.todo;
+              const StatusIcon = status.icon;
+              return (
+                <div
+                  key={task._id}
+                  className="flex items-center justify-between p-2 border rounded hover:bg-accent cursor-pointer transition-colors"
+                  onClick={() => navigate(`/tasks/${task._id}`)}
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <StatusIcon className={`h-4 w-4 ${status.color}`} />
+                    <span className="text-sm font-medium">{task.title}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    {task.assignedTo && (
+                      <span>{task.assignedTo?.name || task.assignedTo?.email}</span>
+                    )}
+                    {task.priority && (
+                      <span className="capitalize">{task.priority}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

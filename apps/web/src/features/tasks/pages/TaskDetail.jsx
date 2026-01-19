@@ -7,7 +7,7 @@ import CommentList from '../components/CommentList.jsx';
 import { useSocketEvent } from '../../../hooks/use-socket.js';
 import { useRole } from '../../../hooks/use-role.js';
 import { Button } from '../../../components/ui/button.jsx';
-import { Input } from '../../../components/ui/input.jsx';
+import { DatePicker } from '../../../components/ui/date-picker.jsx';
 import { Dropdown } from '../../../components/ui/dropdown.jsx';
 import { Calendar, Clock, User, Tag, CheckCircle2, Circle, AlertCircle, XCircle } from 'lucide-react';
 
@@ -16,7 +16,7 @@ export default function TaskDetailPage() {
   const queryClient = useQueryClient();
   const { isAdmin } = useRole();
   const [isEditingDeadline, setIsEditingDeadline] = useState(false);
-  const [deadlineValue, setDeadlineValue] = useState('');
+  const [deadlineValue, setDeadlineValue] = useState(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['task', id],
@@ -74,7 +74,8 @@ export default function TaskDetailPage() {
 
   const handleDeadlineSave = () => {
     if (deadlineValue) {
-      updateTaskMutation.mutate({ dueDate: new Date(deadlineValue).toISOString() });
+      const dateValue = typeof deadlineValue === 'string' ? deadlineValue : new Date(deadlineValue).toISOString();
+      updateTaskMutation.mutate({ dueDate: dateValue });
     } else {
       updateTaskMutation.mutate({ dueDate: null });
     }
@@ -195,8 +196,9 @@ export default function TaskDetailPage() {
                   onClick={() => {
                     setIsEditingDeadline(!isEditingDeadline);
                     if (task.dueDate) {
-                      const date = new Date(task.dueDate);
-                      setDeadlineValue(date.toISOString().slice(0, 16));
+                      setDeadlineValue(task.dueDate);
+                    } else {
+                      setDeadlineValue(null);
                     }
                   }}
                 >
@@ -206,10 +208,10 @@ export default function TaskDetailPage() {
             </div>
             {isEditingDeadline ? (
               <div className="space-y-2">
-                <Input
-                  type="datetime-local"
+                <DatePicker
                   value={deadlineValue}
-                  onChange={(e) => setDeadlineValue(e.target.value)}
+                  onChange={(value) => setDeadlineValue(value)}
+                  placeholder="Select deadline date and time"
                 />
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleDeadlineSave}>
@@ -220,7 +222,7 @@ export default function TaskDetailPage() {
                     variant="outline"
                     onClick={() => {
                       setIsEditingDeadline(false);
-                      setDeadlineValue('');
+                      setDeadlineValue(null);
                     }}
                   >
                     Cancel

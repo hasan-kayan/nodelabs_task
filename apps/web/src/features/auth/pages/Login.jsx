@@ -162,28 +162,38 @@ export default function LoginPage() {
           )}
           
           <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
+            <label className="block text-sm font-medium mb-2">
+              Email {mode === 'register' && <span className="text-red-500">*</span>}
+            </label>
             <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
+              required={mode === 'register'}
             />
           </div>
-          <div className="text-center text-sm text-muted-foreground">OR</div>
+          {mode === 'login' && <div className="text-center text-sm text-muted-foreground">OR</div>}
           <div>
-            <label className="block text-sm font-medium mb-2">Phone</label>
+            <label className="block text-sm font-medium mb-2">
+              Phone {mode === 'register' && <span className="text-red-500">*</span>}
+            </label>
             <Input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Enter your phone number"
+              required={mode === 'register'}
             />
           </div>
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={loading || (!email && !phone) || (mode === 'register' && (!name || name.trim().length === 0))}
+            disabled={
+              loading || 
+              (mode === 'login' && !email && !phone) || 
+              (mode === 'register' && (!name || name.trim().length === 0 || !email || !phone))
+            }
           >
             {loading ? 'Sending...' : mode === 'login' ? 'Send OTP' : 'Register & Send OTP'}
           </Button>

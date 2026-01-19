@@ -1,6 +1,6 @@
 # NodeLabs Task - Hasan KAYAN
 
-I get stick to the provided case-study explanations. You can check the tree outputs from this destination and than keep controlling the completed system. 
+I stuck to the provided case study explanations. You can check the tree outputs from this destination and then keep controlling the completed system. 
 
 ## Tree
 ├── apps
@@ -239,16 +239,10 @@ I get stick to the provided case-study explanations. You can check the tree outp
 
 # Project Requirements 
 
-- OTP-based authentication (email/phone) --> Here you can use email authentications on live demo I created a basic system with one of my personal gmail accounts. You will not see credentails in env files at this repostory but using Gmail SMTP. 
-- JWT access & refresh tokens --> OTP tokens are saved in Redis, time sensitivity managements can be done from .env file. 
--  Role-based access control (Admin/Member) --> There are two types of users Admin/User, anyway task mentions RBAC so I have added this but for some extra functionality, at registiration everybody is a user but anyone who has created their own team can invite other users into the team as member or admin. At this project we use RabiMQ as message brokker, in here each API process can be considered as production and workers here are the consumers, so rbac is also contains a simple RabitMQ process to mention. 
-- Real-time updates via Socket.io --> For each authentication process we use socket.io. Also for team proceses we use socket to handle delays and real-time syncronazation. 
-
-
-
-
-
-
+- OTP-based authentication (email/phone) --> Here you can use email authentication on live demo. I created a basic system with one of my personal Gmail accounts. You will not see credentials in env files at this repository but using Gmail SMTP. 
+- JWT access & refresh tokens --> OTP tokens are saved in Redis, time sensitivity management can be done from .env file. 
+-  Role-based access control (Admin/Member) --> There are two types of users Admin/User, anyway task mentions RBAC so I have added this but for some extra functionality, at registration everybody is a user but anyone who has created their own team can invite other users into the team as member or admin. At this project we use RabbitMQ as message broker, in here each API process can be considered as production and workers here are the consumers, so RBAC also contains a simple RabbitMQ process to mention. 
+- Real-time updates via Socket.io --> For each authentication process we use Socket.io. Also for team processes we use socket to handle delays and real-time synchronization. 
 
 
 
@@ -307,30 +301,25 @@ RabbitMQ Topics
     task.updated - Task updated event
     comment.added - Comment added event
 
-Development
-Running Tests
 
-pnpm test
+# Quick Start 
+You can run all system with single command 
+$ pnpm run dev 
 
-Linting
+Or you can use directly Docker, I have added docker command into pnpm commands at package.json you can see and modify commands. 
+$ pnpm docker:start 
+will automatically create 6 containers. These containers are actually completely separated containers for each component 
+- rabbitmq
+- redis 
+- mongodb 
+- api
+- worker 
+- web 
 
-pnpm lint
+Here web contains the web application, by using the ports you can reach the UI.
+While you are trying to register or sign in, you will have an OTP authentication step. At this step, you need to check the container logs. I am logging the OTP codes in the "api" container, you need to check there. Or you can use the .env file from mail and get real emails for OTP. 
 
-Formatting
+I have also activated an SMTP server with my personal accounts so I will not publish that .env file here but I will send this env file via mail. If you directly use this env file, you will be able to receive real emails. 
 
-pnpm format
-
-Docker Commands
-
-# Start all services
-docker-compose up -d
-
-# Stop all services
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# Rebuild services
-docker-compose up -d --build
+WARNING: The SMTP server will be closed in 3 days, so I would appreciate it if you could respond to me as soon as possible. 
 

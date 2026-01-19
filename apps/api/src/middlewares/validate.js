@@ -61,6 +61,16 @@ export function validate(schema) {
       if (typeof cleanBody.name === 'string') {
         cleanBody.name = cleanBody.name.trim();
       }
+      
+      // For register mode, both email and phone are required
+      if (!cleanBody.email || !cleanBody.phone) {
+        console.log('❌ Validation failed: Both email and phone are required for registration');
+        return res.status(400).json({
+          error: 'Validation failed',
+          message: 'Both email and phone number are required for registration',
+          received: cleanBody,
+        });
+      }
     }
     
     console.log('✅ Final body before AJV validation:', cleanBody);

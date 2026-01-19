@@ -1,4 +1,5 @@
 import { authRepository } from './repository.js';
+import { userRepository } from '../users/repository.js';
 import { generateOTP, verifyOTP } from '../users/service.js';
 import { generateTokens, verifyRefreshToken } from '../../utils/jwt.js';
 import { publishEvent } from '../../events/publisher.js';
@@ -48,54 +49,133 @@ export const authService = {
       throw new Error('Invalid OTP');
     }
 
-    // Find or create user
-    let user = await authRepository.findByEmailOrPhone(email, phone);
-    
-    if (!user) {
-      // Create new user for register mode
-      if (mode === 'register') {
-        user = await authRepository.create({
-          email,
-          phone,
-          name,
-          role: 'member', // Default role
-        });
+    // For login mode: user must exist and email/phone must match
+    if (mode === 'login') {
+      // Check if both email and phone are provided
+      if (email && phone) {
+        // Both provided: find user where both match exactly
+        const user = await authRepository.findByEmailAndPhone(email, phone);
+        if (!user) {
+          throw new Error('User not found. Please register first.');
+        }
+        
+        // Verify that the found user has both email and phone matching
+        if (user.email !== email || user.phone !== phone) {
+          throw new Error('Email and phone number do not match. Please use the correct combination.');
+        }
+        
+        // Generate tokens
+        const tokens = generateTokens(user);
+
+        // Store refresh token
+        await getRedisClient().setex(
+          `refresh:${user._id}`,
+          7 * 24 * 60 * 60, // 7 days
+          tokens.refreshToken
+        );
+
+        return {
+          user: {
+            id: user._id,
+            email: user.email,
+            phone: user.phone,
+            name: user.name,
+            role: user.role,
+          },
+          ...tokens,
+        };
       } else {
-        // For login mode, if user doesn't exist, create one (backward compatibility)
-        user = await authRepository.create({
-          email,
-          phone,
-          role: 'member',
-        });
+        // Only email or only phone provided: find user and verify
+        const user = await authRepository.findByEmailOrPhone(email, phone);
+        if (!user) {
+          throw new Error('User not found. Please register first.');
+        }
+        
+        // Verify the provided credential matches
+        if (email && user.email !== email) {
+          throw new Error('Email does not match. Please use the correct email.');
+        }
+        if (phone && user.phone !== phone) {
+          throw new Error('Phone number does not match. Please use the correct phone number.');
+        }
+        
+        // Generate tokens
+        const tokens = generateTokens(user);
+
+        // Store refresh token
+        await getRedisClient().setex(
+          `refresh:${user._id}`,
+          7 * 24 * 60 * 60, // 7 days
+          tokens.refreshToken
+        );
+
+        return {
+          user: {
+            id: user._id,
+            email: user.email,
+            phone: user.phone,
+            name: user.name,
+            role: user.role,
+          },
+          ...tokens,
+        };
       }
-    } else if (mode === 'register') {
-      // User already exists, throw error
-      throw new Error('User already exists. Please login instead.');
-    } else if (name && mode === 'register') {
-      // Update name if provided during registration
-      user = await authRepository.update(user._id, { name });
     }
 
-    // Generate tokens
-    const tokens = generateTokens(user);
+    // For register mode: create new user
+    if (mode === 'register') {
+      // Both email and phone are required for registration (validated in middleware)
+      if (!email || !phone) {
+        throw new Error('Both email and phone number are required for registration.');
+      }
+      
+      // Check if email is already taken
+      const userWithEmail = await userRepository.findByEmail(email);
+      if (userWithEmail) {
+        throw new Error('Email is already registered. Please login instead.');
+      }
+      
+      // Check if phone is already taken
+      const userWithPhone = await userRepository.findByPhone(phone);
+      if (userWithPhone) {
+        throw new Error('Phone number is already registered. Please login instead.');
+      }
+      
+      // Check if a user exists with both email and phone (exact match)
+      const existingUser = await authRepository.findByEmailAndPhone(email, phone);
+      if (existingUser) {
+        throw new Error('User already exists. Please login instead.');
+      }
+      
+      // Create new user
+      const user = await authRepository.create({
+        email,
+        phone,
+        name,
+        role: 'member', // Default role
+      });
 
-    // Store refresh token
-    await getRedisClient().setex(
-      `refresh:${user._id}`,
-      7 * 24 * 60 * 60, // 7 days
-      tokens.refreshToken
-    );
+      // Generate tokens
+      const tokens = generateTokens(user);
 
-    return {
-      user: {
-        id: user._id,
-        email: user.email,
-        phone: user.phone,
-        name: user.name,
-        role: user.role,
-      },
-      ...tokens,
-    };
+      // Store refresh token
+      await getRedisClient().setex(
+        `refresh:${user._id}`,
+        7 * 24 * 60 * 60, // 7 days
+        tokens.refreshToken
+      );
+
+      return {
+        user: {
+          id: user._id,
+          email: user.email,
+          phone: user.phone,
+          name: user.name,
+          role: user.role,
+        },
+        ...tokens,
+      };
+    }
   },
 
   async refreshToken(refreshToken) {

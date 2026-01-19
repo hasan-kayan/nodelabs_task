@@ -10,6 +10,20 @@ export const authRepository = {
     });
   },
 
+  async findByEmailAndPhone(email, phone) {
+    // Find user where both email and phone match exactly
+    // Both must be provided and both must match
+    if (email && phone) {
+      return User.findOne({
+        email,
+        phone,
+      });
+    }
+    
+    // If only one is provided, return null (should not happen in login with both)
+    return null;
+  },
+
   async findById(id) {
     return User.findById(id);
   },

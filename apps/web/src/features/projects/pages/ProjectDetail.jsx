@@ -88,7 +88,10 @@ export default function ProjectDetailPage() {
           {tasksLoading ? (
             <div>Loading tasks...</div>
           ) : (
-            <TaskTable tasks={tasks?.data?.tasks || []} />
+            <TaskTable 
+              tasks={tasks?.data?.tasks || []} 
+              onRowClick={(task) => navigate(`/tasks/${task._id}`)}
+            />
           )}
         </div>
       </div>

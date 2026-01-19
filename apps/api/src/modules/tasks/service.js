@@ -100,7 +100,7 @@ export const taskService = {
       ];
     }
     
-    // Members can only see tasks from their teams or projects they're part of
+    // Members can only see tasks assigned to them from their teams
     if (role === 'member' && userId) {
       const mongoose = (await import('mongoose')).default;
       const userIdObj = mongoose.Types.ObjectId.isValid(userId) 
@@ -115,28 +115,50 @@ export const taskService = {
         .map(t => t.teamId) || [];
       
       // Member can see:
-      // 1. Tasks they created
-      // 2. Tasks assigned to them
-      // 3. Tasks from teams they belong to (approved status)
-      const memberTasks = {
-        $or: [
-          { createdBy: userIdObj },
-          { assignedTo: userIdObj },
-          ...(userTeamIds.length > 0 ? [{ teamId: { $in: userTeamIds } }] : []),
-        ],
-      };
-      
-      // Combine with search filter if exists
-      if (filter.$or) {
-        filter.$and = [
-          { $or: filter.$or }, // search filter
-          memberTasks,         // member filter
-        ];
-        delete filter.$or;
+      // 1. Tasks assigned to them (from their teams)
+      // 2. Tasks they created (from their teams)
+      if (userTeamIds.length > 0) {
+        const memberTasks = {
+          $or: [
+            { assignedTo: userIdObj },
+            { createdBy: userIdObj },
+          ],
+          teamId: { $in: userTeamIds },
+        };
+        
+        // Combine with search filter if exists
+        if (filter.$or) {
+          filter.$and = [
+            { $or: filter.$or }, // search filter
+            memberTasks,         // member filter
+          ];
+          delete filter.$or;
+        } else {
+          Object.assign(filter, memberTasks);
+        }
       } else {
-        Object.assign(filter, memberTasks);
+        // User has no teams, can only see tasks assigned to them or created by them (if any)
+        const memberTasks = {
+          $or: [
+            { assignedTo: userIdObj },
+            { createdBy: userIdObj },
+          ],
+        };
+        
+        // Combine with search filter if exists
+        if (filter.$or) {
+          filter.$and = [
+            { $or: filter.$or }, // search filter
+            memberTasks,         // member filter
+          ];
+          delete filter.$or;
+        } else {
+          Object.assign(filter, memberTasks);
+        }
       }
+      
     }
+    // Admin can see all tasks (no additional filter)
 
     const skip = (page - 1) * limit;
     

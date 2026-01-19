@@ -66,4 +66,5 @@ export const userService = {
 };
 
 // Export for use in auth service
-export const { generateOTP, verifyOTP } = userService;
+export const generateOTP = userService.generateOTP;
+export const verifyOTP = userService.verifyOTP;

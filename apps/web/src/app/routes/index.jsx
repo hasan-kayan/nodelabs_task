@@ -6,6 +6,7 @@ import ProjectsListPage from '../../features/projects/pages/ProjectsList.jsx';
 import CreateProjectPage from '../../features/projects/pages/CreateProject.jsx';
 import ProjectDetailPage from '../../features/projects/pages/ProjectDetail.jsx';
 import TaskDetailPage from '../../features/tasks/pages/TaskDetail.jsx';
+import TasksListPage from '../../features/tasks/pages/TasksList.jsx';
 import ProfilePage from '../../features/profile/pages/Profile.jsx';
 import TeamsListPage from '../../features/teams/pages/TeamsList.jsx';
 import CreateTeamPage from '../../features/teams/pages/CreateTeam.jsx';
@@ -33,6 +34,7 @@ function App() {
           <Route path="/projects" element={<ProjectsListPage />} />
           <Route path="/projects/new" element={<CreateProjectPage />} />
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
+          <Route path="/tasks" element={<TasksListPage />} />
           <Route path="/tasks/:id" element={<TaskDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/" element={<Navigate to="/teams" replace />} />

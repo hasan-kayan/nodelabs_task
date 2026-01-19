@@ -37,6 +37,13 @@ export default function AppLayout() {
               </Button>
               <Button
                 variant="ghost"
+                onClick={() => navigate('/tasks')}
+                className={location.pathname.startsWith('/tasks') ? 'bg-muted' : ''}
+              >
+                Tasks
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={() => navigate('/profile')}
                 className={location.pathname.startsWith('/profile') ? 'bg-muted' : ''}
               >

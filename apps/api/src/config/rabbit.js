@@ -34,20 +34,49 @@ export async function publishEvent(topic, message) {
   const ch = getChannel();
   const exchange = config.rabbitmq.exchange;
   
-  const published = ch.publish(
-    exchange, 
-    topic, 
-    Buffer.from(JSON.stringify(message)), 
-    {
-      persistent: true,
+  try {
+    const published = ch.publish(
+      exchange, 
+      topic, 
+      Buffer.from(JSON.stringify(message)), 
+      {
+        persistent: true,
+      }
+    );
+    
+    if (published) {
+      logger.info(`📤 Published event: ${topic} to exchange: ${exchange}`, {
+        topic,
+        exchange,
+        messageKeys: Object.keys(message),
+      });
+      logger.info(`📤 Event payload:`, { topic, ...message, otp: message.otp ? '***' : undefined });
+    } else {
+      logger.warn(`⚠️ Failed to publish event: ${topic} - channel buffer full, waiting for drain...`);
+      // Wait for drain event
+      await new Promise((resolve) => {
+        ch.once('drain', resolve);
+      });
+      // Retry once
+      const retryPublished = ch.publish(
+        exchange, 
+        topic, 
+        Buffer.from(JSON.stringify(message)), 
+        {
+          persistent: true,
+        }
+      );
+      if (!retryPublished) {
+        throw new Error(`Failed to publish event ${topic} after retry - channel buffer still full`);
+      }
+      logger.info(`📤 Published event: ${topic} after drain`);
     }
-  );
-  
-  if (published) {
-    logger.info(`📤 Published event: ${topic} to exchange: ${exchange}`);
-    logger.info(`📤 Event payload:`, { topic, ...message, otp: message.otp ? '***' : undefined });
-  } else {
-    logger.warn(`⚠️ Failed to publish event: ${topic} - channel buffer full`);
+  } catch (error) {
+    logger.error(`❌ Error publishing event ${topic}:`, {
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
   }
 }
 

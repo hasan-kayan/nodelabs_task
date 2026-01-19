@@ -3,6 +3,8 @@
 I stuck to the provided case study explanations. You can check the tree outputs from this destination and then keep controlling the completed system. 
 
 ## Tree
+
+```
 ├── apps
 │   ├── api
 │   │   ├── Dockerfile
@@ -235,7 +237,7 @@ I stuck to the provided case study explanations. You can check the tree outputs 
 ├── pnpm-lock.yaml
 ├── pnpm-workspace.yaml
 └── README.md
-
+```
 
 # Project Requirements 
 
@@ -303,11 +305,18 @@ RabbitMQ Topics
 
 
 # Quick Start 
-You can run all system with single command 
-$ pnpm run dev 
 
-Or you can use directly Docker, I have added docker command into pnpm commands at package.json you can see and modify commands. 
-$ pnpm docker:start 
+You can run all system with single command:
+
+```bash
+pnpm run dev
+```
+
+Or you can use directly Docker. I have added docker command into pnpm commands at package.json, you can see and modify commands:
+
+```bash
+pnpm docker:start
+``` 
 will automatically create 6 containers. These containers are actually completely separated containers for each component 
 - rabbitmq
 - redis 
